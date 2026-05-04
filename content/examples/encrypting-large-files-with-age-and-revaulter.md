@@ -1,6 +1,6 @@
 ---
 title: "Encrypting large files with age and Revaulter"
-weight: 32
+weight: 33
 ---
 
 [age](https://github.com/FiloSottile/age) is a file encryption tool. You can use Revaulter to wrap the age private key so that decrypting files requires passkey approval.
@@ -67,16 +67,16 @@ TAG=$(jq -r '.tag' "$WRAPPED_KEY")
 
 # Unwrap the age private key — requires passkey approval
 revaulter-cli decrypt \
-  --server "$REVAULTER_SERVER" \
-  --request-key "$REQUEST_KEY" \
-  --key-label age-key \
-  --algorithm A256GCM \
-  --value "$CIPHERTEXT" \
-  --nonce "$NONCE" \
-  --tag "$TAG" \
-  --format raw \
-  --output /dev/stdin \
-  --note "age decrypt" \
+    --server "$REVAULTER_SERVER" \
+    --request-key "$REQUEST_KEY" \
+    --key-label age-key \
+    --algorithm A256GCM \
+    --value "$CIPHERTEXT" \
+    --nonce "$NONCE" \
+    --tag "$TAG" \
+    --format raw \
+    --output /dev/stdin \
+    --note "age decrypt" \
   2>/dev/null \
   | age \
     --decrypt \
@@ -91,4 +91,3 @@ revaulter-cli decrypt \
 - **Decryption requires approval**: the age private key is wrapped by Revaulter, so decrypting always requires a passkey holder to approve.
 - **The private key never lives on disk in plaintext** (after initial setup): it is stored only in Revaulter's encrypted envelope and briefly materialized in memory or a temporary file during decryption.
 - **age handles the heavy lifting**: age is designed for encrypting large files efficiently; Revaulter protects only the small private key.
-

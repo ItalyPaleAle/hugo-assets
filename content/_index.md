@@ -23,28 +23,7 @@ Encryption keys and signing keys don't belong in environment variables or on dis
 
 ### Encrypt and decrypt any message
 
-Protect sensitive data with your passkey. Use `revaulter-cli` to encrypt a value, and the passkey holder confirms the operation from their browser:
-
-```bash
-MESSAGE=$(echo -n 'my secret message' | base64)
-REQUEST_KEY="AbCdEf0123456789GhIj"
-
-# Encrypt
-revaulter-cli encrypt \
-  --server https://revaulter.example.com \
-  --request-key $REQUEST_KEY \
-  --key-label my-secret \
-  --algorithm A256GCM \
-  --value "$MESSAGE"
-
-# Decrypt
-revaulter-cli decrypt \
-  --server https://revaulter.example.com \
-  --request-key $REQUEST_KEY \
-  --key-label my-secret \
-  --algorithm A256GCM \
-  --value <ciphertext> --nonce <nonce> --tag <tag>
-```
+Protect short sensitive values with your passkey, including API tokens, connection strings, TLS private keys, and wrapped secrets. Revaulter sends the request to the browser for local crypto, so payloads are limited to 100 KB. [See full example](/examples/encrypt-and-decrypt-short-messages/) in the docs.
 
 ### Wrap encryption keys safely
 

@@ -1,6 +1,6 @@
 ---
 title: "Backing up with restic"
-weight: 33
+weight: 34
 ---
 
 [restic](https://restic.net) uses a single password to derive its repository encryption key. Storing that password unattended on the backup host largely defeats the point of having backups: anyone who pops the host gets the repository. Wrapping the password with Revaulter means the backup script gets the password only after a passkey holder approves.
@@ -77,4 +77,3 @@ restic invokes the script, the script blocks waiting for approval, the maintaine
 - **The host can't restore on its own**: a compromised backup host cannot decrypt the repository even if the wrapped blob and the request key both leak.
 - **One file to deploy**: the wrapped JSON is the only secret on the host, and it's useless without Revaulter.
 - **Live audit trail**: every restore (or recurring backup) requires interactive approval, so unusual activity is visible in real time.
-

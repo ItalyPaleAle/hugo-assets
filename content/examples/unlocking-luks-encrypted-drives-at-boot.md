@@ -1,6 +1,6 @@
 ---
 title: "Unlocking LUKS-encrypted drives at boot"
-weight: 31
+weight: 32
 ---
 
 You can use Revaulter to protect the encryption key for a LUKS volume. Instead of storing the key on disk or typing a passphrase at the console, a script calls `revaulter-cli` during boot and an admin approves the unlock from their phone.
@@ -90,4 +90,3 @@ RemainAfterExit=yes
 [Install]
 WantedBy=local-fs.target
 ```
-

@@ -1,6 +1,6 @@
 ---
 title: "Authenticate to SSH servers"
-weight: 38
+weight: 39
 ---
 
 Revaulter can run as an SSH agent. SSH clients ask the local agent to sign authentication challenges, and the agent routes each signature request through Revaulter so the key holder approves it in the browser with their passkey.

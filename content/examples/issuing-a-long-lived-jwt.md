@@ -1,6 +1,6 @@
 ---
 title: "Issuing a long-lived JWT"
-weight: 36
+weight: 37
 ---
 
 Sometimes a service needs a JWT that lives for hours or days: for example, a service-to-service credential, an installer license, or a break-glass admin token. Revaulter's `sign --format jws` makes this a passkey-approved operation: the issuing host never holds the signing key, and the maintainer reviews the exact claims before approving.
@@ -52,4 +52,3 @@ Any standard JOSE library verifies the token using the published JWK. See [Fetch
 - **Maintainer reviews claims**: the JWS payload is the claims JSON itself, so the in-browser preview shows exactly what's about to be signed (`iss`, `sub`, `exp`, scopes…).
 - **Standard verification**: the token is a plain compact JWS with `alg=ES256` and an embedded `kid`: consumers verify it like any other JWT.
 - **No long-lived signing infrastructure**: there's no HSM, no KMS account, no `AWS_ACCESS_KEY_ID` to rotate.
-
