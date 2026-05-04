@@ -1,0 +1,30 @@
+{{- /*
+  {{< callout type="note" >}}
+  Your note here.
+  {{< /callout >}}
+
+  type: note (default) | warning | danger | tip
+*/ -}}
+{{- $type := .Get "type" | default "note" -}}
+
+<div class="callout callout-{{ $type }}" role="note">
+  <span class="callout-icon" aria-hidden="true">
+    {{- if or (eq $type "warning") (eq $type "danger") -}}
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 1L1 14h14L8 1z"/>
+        <path d="M8 6v4M8 11.5v.5"/>
+      </svg>
+    {{- else if eq $type "tip" -}}
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 2a4 4 0 0 1 1.5 7.7V11H6.5v-1.3A4 4 0 0 1 8 2z"/>
+        <path d="M6.5 12h3M7 14h2"/>
+      </svg>
+    {{- else -}}
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8" cy="8" r="7"/>
+        <path d="M8 7v4M8 5v.5"/>
+      </svg>
+    {{- end -}}
+  </span>
+  <div>{{ .Inner | markdownify }}</div>
+</div>

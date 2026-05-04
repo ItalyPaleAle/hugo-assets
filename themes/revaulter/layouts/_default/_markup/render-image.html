@@ -1,0 +1,42 @@
+{{- $src := .Destination -}}
+{{- $alt := .Text -}}
+{{- $title := .Title -}}
+
+{{- /* Try to resolve as page resource first, then site resource */ -}}
+{{- $img := "" -}}
+{{- with .Page.Resources.GetMatch $src -}}
+  {{- $img = . -}}
+{{- else -}}
+  {{- with resources.Get $src -}}
+    {{- $img = . -}}
+  {{- end -}}
+{{- end -}}
+
+<figure class="docs-figure">
+  {{- if $img }}
+  <div class="docs-figure-frame">
+    <img
+      src="{{ $img.RelPermalink }}"
+      alt="{{ $alt }}"
+      {{- with $img.Width }} width="{{ . }}"{{ end }}
+      {{- with $img.Height }} height="{{ . }}"{{ end }}
+      loading="lazy"
+      decoding="async"
+    />
+  </div>
+  {{- else }}
+  <div class="docs-figure-frame">
+    <img
+      src="{{ $src }}"
+      alt="{{ $alt }}"
+      loading="lazy"
+      decoding="async"
+    />
+  </div>
+  {{- end }}
+  {{- if or $title $alt }}
+  <figcaption class="docs-caption">
+    {{- $title | default $alt -}}
+  </figcaption>
+  {{- end }}
+</figure>

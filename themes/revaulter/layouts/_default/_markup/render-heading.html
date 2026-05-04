@@ -1,0 +1,7 @@
+{{- $id := .Anchor -}}
+{{- $text := .Text | safeHTML -}}
+{{- $anchor := "" -}}
+{{- if ge .Level 2 -}}
+  {{- $anchor = printf `<a href="#%s" class="heading-anchor" aria-label="Link to this section">#</a>` $id -}}
+{{- end -}}
+{{- printf `<h%d id="%s">%s%s</h%d>` .Level $id $text $anchor .Level | safeHTML -}}

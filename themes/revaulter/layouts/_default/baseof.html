@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.Language.Lang | default "en" }}" class="h-full">
+<head>
+  {{- partial "head.html" . -}}
+</head>
+<body class="min-h-full bg-bg text-ink font-sans antialiased">
+
+  {{- partial "header.html" . -}}
+
+  <div class="grid min-h-[calc(100vh-4rem)]" style="grid-template-columns: 244px 1fr 220px;">
+
+    {{- partial "nav.html" . -}}
+
+    <main class="min-w-0">
+      <div class="px-14 py-10 pb-15 max-w-[820px]">
+        {{- block "main" . }}{{- end }}
+      </div>
+    </main>
+
+    {{- partial "toc.html" . -}}
+
+  </div>
+
+  {{- partial "mermaid-init.html" . -}}
+
+</body>
+</html>

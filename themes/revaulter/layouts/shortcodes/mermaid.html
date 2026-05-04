@@ -1,0 +1,5 @@
+{{- /* {{< mermaid >}} diagram source {{< /mermaid >}} */ -}}
+{{- .Page.Store.Set "hasMermaid" true -}}
+<div class="mermaid-block">
+  <pre class="mermaid">{{- .Inner | safeHTML -}}</pre>
+</div>

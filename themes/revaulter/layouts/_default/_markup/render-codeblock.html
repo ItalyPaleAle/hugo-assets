@@ -1,0 +1,18 @@
+{{- $lang := .Type -}}
+{{- $code := .Inner -}}
+
+{{- if eq $lang "mermaid" -}}
+  {{- /* Signal the page that mermaid.js must be loaded */ -}}
+  {{- .Page.Store.Set "hasMermaid" true -}}
+  <div class="mermaid-block">
+    <pre class="mermaid">{{- $code -}}</pre>
+  </div>
+{{- else -}}
+  {{- $highlighted := transform.Highlight $code $lang "" -}}
+  <div class="code-block">
+    {{- if $lang -}}
+    <span class="code-lang" aria-hidden="true">{{ $lang }}</span>
+    {{- end -}}
+    {{- $highlighted -}}
+  </div>
+{{- end -}}

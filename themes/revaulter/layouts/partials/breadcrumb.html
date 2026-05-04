@@ -1,0 +1,9 @@
+{{- if and .IsPage .CurrentSection -}}
+<div class="breadcrumb">
+  {{- with .CurrentSection -}}
+  <span>{{ .Title }}</span>
+  <span class="breadcrumb-sep">/</span>
+  {{- end -}}
+  <span class="text-ink-soft">{{ .Title }}</span>
+</div>
+{{- end -}}

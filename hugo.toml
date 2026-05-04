@@ -1,0 +1,43 @@
+baseURL = "https://revaulter.italypaleale.me/"
+locale = "en-us"
+title = "Revaulter"
+theme = "revaulter"
+
+# Required for render hooks + unsafe HTML in markdown
+[markup]
+  [markup.highlight]
+    # Use CSS classes (styled by main.css Chroma rules)
+    noClasses = false
+    # Fallback only; noClasses = false overrides this
+    style = "github"
+    lineNos = false
+    lineNumbersInTable = false
+    guessSyntax = true
+    tabWidth = 2
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+        # Allow raw HTML in markdown content
+      unsafe = true
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
+    ordered = false
+
+[params]
+  description   = "Encrypt, decrypt, and sign with passkeys"
+  github_url    = "https://github.com/itaypaleale/revaulter"
+  github_repo   = "https://github.com/itaypaleale/revaulter"
+  github_branch = "main"
+
+[security]
+  [node]
+    [security.node.permissions]
+      allowAddons = ["postcss", "tailwindcss"]
+      allowRead = ["."]
+      allowWorker = ["postcss", "tailwindcss"]
+
+# Taxonomy pages aren't needed for a docs site
+[taxonomies]
+
+# Disable RSS / sitemap if not needed (optional)
+# disableKinds = ["RSS"]

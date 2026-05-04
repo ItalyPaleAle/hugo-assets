@@ -1,0 +1,54 @@
+{{- if and (or .IsPage .IsHome) (not .Params.hide_toc) -}}
+<aside class="docs-sidebar sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto border-l border-rule px-7 py-10">
+
+  {{- if .TableOfContents }}
+  <div class="toc-label">On this page</div>
+  {{ .TableOfContents }}
+  {{- end }}
+
+</aside>
+{{- else }}
+<!-- No TOC — empty grid cell keeps layout intact -->
+<div class="toc-placeholder border-l border-rule"></div>
+{{- end }}
+
+<script>
+/* Scroll-spy: highlight the active TOC entry as the user scrolls */
+(function () {
+  const toc = document.querySelector('#TableOfContents');
+  if (!toc) return;
+
+  const links = Array.from(toc.querySelectorAll('a[href^="#"]'));
+  if (!links.length) return;
+
+  const headings = links
+    .map(a => {
+      const href = a.getAttribute('href');
+      if (!href || href[0] !== '#') return null;
+      return document.getElementById(decodeURIComponent(href.slice(1)));
+    })
+    .filter(Boolean);
+
+  if (!headings.length) return;
+
+  function onScroll() {
+    const scrollY = window.scrollY + 104; /* offset for sticky header */
+    let active = headings[0];
+    for (const h of headings) {
+      const top = h.getBoundingClientRect().top + window.scrollY;
+      if (top <= scrollY) active = h;
+    }
+    links.forEach(a => {
+      const li = a.closest('li');
+      if (!li) return;
+      const href = a.getAttribute('href');
+      const id = decodeURIComponent(href.slice(1));
+      li.classList.toggle('toc-active', active && active.id === id);
+    });
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+  onScroll();
+})();
+</script>

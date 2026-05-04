@@ -1,0 +1,82 @@
+{{- /*
+  {{< figure src="path/to/image.png" alt="Alt text" caption="Figure caption" >}}
+  {{< figure light="path/to/light.png" dark="path/to/dark.png" alt="Alt text" caption="Figure caption" >}}
+
+  Or as a placeholder (no src):
+  {{< figure label="diagram · flow" caption="Figure caption text" >}}
+*/ -}}
+{{- $src     := .Get "src" -}}
+{{- $light   := .Get "light" -}}
+{{- $dark    := .Get "dark" -}}
+{{- $alt     := .Get "alt" | default "" -}}
+{{- $caption := .Get "caption" | default "" -}}
+{{- $label   := .Get "label" | default "image placeholder" -}}
+{{- $id      := printf "fig-%d" .Ordinal -}}
+{{- $resize  := .Get "resize" | default "1600x webp q82" -}}
+
+{{- $lightImage := "" -}}
+{{- $darkImage := "" -}}
+{{- $srcImage := "" -}}
+{{- with $light }}{{ $lightImage = resources.Get . }}{{ end -}}
+{{- with $dark }}{{ $darkImage = resources.Get . }}{{ end -}}
+{{- with $src }}{{ $srcImage = resources.Get . }}{{ end -}}
+
+<figure class="docs-figure">
+  {{- if and $lightImage $darkImage }}
+  {{- $lightWebp := $lightImage.Resize $resize -}}
+  {{- $darkWebp := $darkImage.Resize $resize -}}
+  <div class="docs-figure-frame">
+    <picture>
+      <source srcset="{{ $darkWebp.RelPermalink }}" media="(prefers-color-scheme: dark)" type="image/webp">
+      <img
+        src="{{ $lightWebp.RelPermalink }}"
+        alt="{{ $alt }}"
+        width="{{ $lightWebp.Width }}"
+        height="{{ $lightWebp.Height }}"
+        loading="lazy"
+        decoding="async"
+      />
+    </picture>
+  </div>
+  {{- else if $srcImage }}
+  {{- $srcWebp := $srcImage.Resize $resize -}}
+  <div class="docs-figure-frame">
+    <img
+      src="{{ $srcWebp.RelPermalink }}"
+      alt="{{ $alt }}"
+      width="{{ $srcWebp.Width }}"
+      height="{{ $srcWebp.Height }}"
+      loading="lazy"
+      decoding="async"
+    />
+  </div>
+  {{- else if $src }}
+  <div class="docs-figure-frame">
+    <img src="{{ urls.RelURL $src }}" alt="{{ $alt }}" loading="lazy" decoding="async" />
+  </div>
+  {{- else }}
+  {{- /* Striped placeholder — matches design's FigurePlaceholder */ -}}
+  <div class="docs-figure-frame overflow-hidden" style="aspect-ratio: 16/7; position: relative;">
+    <svg width="100%" height="100%" viewBox="0 0 1600 700" preserveAspectRatio="none"
+         style="display:block;" aria-hidden="true">
+      <defs>
+        <pattern id="{{ $id }}" patternUnits="userSpaceOnUse" width="14" height="14" patternTransform="rotate(45)">
+          <rect width="14" height="14" fill="var(--fig-stripe-a)" />
+          <rect width="7" height="14" fill="var(--fig-stripe-b)" />
+        </pattern>
+      </defs>
+      <rect width="1600" height="700" fill="url(#{{ $id }})" />
+    </svg>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+      <span style="font-family:'Geist Mono',monospace;font-size:13px;letter-spacing:.2px;
+                   color:var(--fig-ink);padding:6px 12px;border-radius:4px;
+                   background:var(--bg);border:1px solid var(--fig-frame);">
+        {{ $label }}
+      </span>
+    </div>
+  </div>
+  {{- end }}
+  {{- with $caption }}
+  <figcaption class="docs-caption">{{ . }}</figcaption>
+  {{- end }}
+</figure>

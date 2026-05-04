@@ -1,0 +1,16 @@
+{
+  "name": "revaulter-theme",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tailwindcss -i ./assets/css/main.css -o ./assets/css/main.built.css --minify",
+    "watch": "tailwindcss -i ./assets/css/main.css -o ./assets/css/main.built.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.2.4",
+    "@tailwindcss/postcss": "4.2.4",
+    "postcss": "8.5.10",
+    "postcss-cli": "11.0.1",
+    "tailwindcss": "4.2.4"
+  }
+}

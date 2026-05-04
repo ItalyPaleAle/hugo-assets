@@ -1,0 +1,35 @@
+{{- /*
+  Blockquote render hook (Hugo 0.132+).
+  Supports GitHub-style alert markers on the FIRST line of the blockquote:
+    > [!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!DANGER], [!CAUTION]
+  Falls back to a plain styled blockquote.
+*/ -}}
+
+{{- $text := .Text -}}
+{{- $alertType := "" -}}
+{{- with .AlertType -}}
+  {{- $alertType = . -}}
+{{- end -}}
+
+{{- if eq $alertType "caution" -}}
+  {{- $alertType = "danger" -}}
+{{- end -}}
+
+{{- if $alertType -}}
+  <div class="callout callout-{{ $alertType }}" role="note">
+    <span class="callout-icon" aria-hidden="true">
+      {{- if or (eq $alertType "warning") (eq $alertType "danger") -}}
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L1 14h14L8 1z"/><path d="M8 6v4M8 11.5v.5"/></svg>
+      {{- else if eq $alertType "tip" -}}
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a4 4 0 0 1 1.5 7.7V11H6.5v-1.3A4 4 0 0 1 8 2z"/><path d="M6.5 12h3M7 14h2"/></svg>
+      {{- else -}}
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 7v4M8 5v.5"/></svg>
+      {{- end -}}
+    </span>
+    <div>{{ $text }}</div>
+  </div>
+{{- else -}}
+  <blockquote class="docs-blockquote">
+    {{- $text -}}
+  </blockquote>
+{{- end -}}

@@ -1,0 +1,39 @@
+{{ define "main" }}
+
+  {{- partial "breadcrumb.html" . -}}
+
+  <h1 class="text-[2.5rem] font-semibold tracking-[-0.0625rem] leading-[1.1] mb-[0.875rem] text-ink">
+    {{- .Title -}}
+  </h1>
+
+  {{- with .Params.description }}
+  <p class="page-lead">{{ . }}</p>
+  {{- end }}
+
+  {{- with .Params.meta }}
+  <div class="meta-row">
+    {{- range $i, $item := . }}
+      {{- if $i }}<span class="meta-divider"></span>{{ end }}
+      <span>
+        {{- with $item.label }}<span class="meta-label">{{ . }}</span>{{ end -}}
+        {{- with $item.value }}
+          {{- if $item.mono }}
+            <code>{{ . }}</code>
+          {{- else }}
+            {{- . -}}
+          {{- end }}
+        {{- end -}}
+      </span>
+    {{- end }}
+  </div>
+  {{- end }}
+
+  <div class="prose">
+    {{- .Content -}}
+  </div>
+
+  {{- partial "edit-link.html" . -}}
+
+  {{- partial "prevnext.html" . -}}
+
+{{ end }}

@@ -1,0 +1,33 @@
+{{ define "main" }}
+
+  {{- partial "breadcrumb.html" . -}}
+
+  <h1 class="text-[2.5rem] font-semibold tracking-[-0.0625rem] leading-[1.1] mb-[0.875rem] text-ink">
+    {{- .Title -}}
+  </h1>
+
+  {{- with .Params.description }}
+  <p class="page-lead">{{ . }}</p>
+  {{- end }}
+
+  {{- with .Content }}
+  <div class="prose">{{ . }}</div>
+  {{- end }}
+
+  {{- if .Pages }}
+  <ul class="mt-8 space-y-1">
+    {{- range .Pages }}
+    <li>
+      <a href="{{ .RelPermalink }}"
+         class="flex items-center gap-3 px-3 py-2 -mx-3 rounded-md text-ink-soft hover:text-ink hover:bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] transition-colors no-underline group">
+        <span class="text-[0.84375rem] font-medium text-ink group-hover:text-accent-ink transition-colors">{{ .Title }}</span>
+        {{- with .Params.description }}
+        <span class="text-[0.8125rem] text-ink-muted truncate">— {{ . }}</span>
+        {{- end }}
+      </a>
+    </li>
+    {{- end }}
+  </ul>
+  {{- end }}
+
+{{ end }}

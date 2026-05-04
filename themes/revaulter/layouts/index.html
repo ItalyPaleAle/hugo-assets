@@ -1,0 +1,17 @@
+{{ define "main" }}
+
+  <h1 class="text-[2.5rem] font-semibold tracking-[-0.0625rem] leading-[1.1] mb-[0.875rem] text-ink">
+    {{- .Title -}}
+  </h1>
+
+  {{- with .Params.description }}
+  <p class="page-lead">{{ . }}</p>
+  {{- end }}
+
+  <div class="prose">
+    {{- .Content -}}
+  </div>
+
+  {{- partial "edit-link.html" . -}}
+
+{{ end }}

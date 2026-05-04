@@ -1,0 +1,10 @@
+{
+  "name": "revaulter-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo server",
+    "build": "HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo --gc --minify",
+    "theme:install": "npm --prefix themes/revaulter install"
+  }
+}
