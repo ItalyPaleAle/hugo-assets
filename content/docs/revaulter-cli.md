@@ -1,6 +1,6 @@
 ---
 title: "Using the Revaulter CLI"
-weight: 23
+weight: 27
 ---
 
 The Revaulter CLI (`revaulter-cli`) is the primary way to submit encrypt, decrypt, and sign requests.

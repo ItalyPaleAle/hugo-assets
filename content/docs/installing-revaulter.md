@@ -1,7 +1,6 @@
 ---
 title: "Installing Revaulter"
-weight: 22
-
+weight: 25
 ---
 
 Revaulter is distributed as a container image and runs as a single-container service.
@@ -10,8 +9,11 @@ Revaulter is distributed as a container image and runs as a single-container ser
 
 - A container runtime (Docker, Podman, etc.)
 - A database: **SQLite** or **PostgreSQL**
-- HTTPS access for the web UI: TLS certificates or a reverse proxy (this is required because of WebCrypto)
+- HTTPS access for the web UI
 - A webhook endpoint for notifications (Discord, Slack, or any HTTP endpoint)
+
+> HTTPS is required for Revaulter because it uses WebCrypto.
+> You can either configure Revaulter to start a HTTPS server (which requires providing TLS certificates to Revaulter directly) or use a reverse proxy that performs TLS termination, such as Caddy, Traefik, Nginx, etc.
 
 ## Container images
 
@@ -89,10 +91,10 @@ Revaulter supports SQLite and PostgreSQL. The backend is detected automatically 
 
 SQLite requires no external dependencies and is a good default for single-node deployments.
 
-For PostgreSQL, use a standard connection string with `sslmode=require` in production:
+For PostgreSQL, use a standard connection string, for example:
 
 ```
-postgres://revaulter:password@db.example.com:5432/revaulter?sslmode=require
+postgres://revaulter:password@db.example.com:5432/revaulter
 ```
 
 > ⚠️ **Warning:** When using SQLite, the database file must **not** be stored on a networked filesystem, like NFS or SMB.

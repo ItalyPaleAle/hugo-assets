@@ -1,6 +1,6 @@
 ---
 title: "Cryptography Architecture"
-weight: 24
+weight: 29
 ---
 
 ## Scope
