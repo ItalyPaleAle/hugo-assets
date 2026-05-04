@@ -3,8 +3,6 @@ title: "Cryptography Architecture"
 weight: 29
 ---
 
-## Scope
-
 This document describes the cryptography used by Revaulter v2 as it exists today in the browser client, CLI protocol, and server-side storage model.
 It focuses on how WebAuthn PRF, WebCrypto, optional passwords, the primary key, and request/response envelopes fit together.
 
