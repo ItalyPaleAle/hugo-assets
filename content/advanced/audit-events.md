@@ -5,7 +5,7 @@ weight: 42
 
 Revaulter records security-relevant actions to a durable, append-only `v2_audit_events` table. The table sits alongside the operational application log (emitted to stdout): ordinary debug messages still go to the log stream, while audit rows are the long-lived history of *who did what*.
 
-There is currently no UI or REST API for reading audit events and operators must query the table directly with SQL. A read endpoint may ship in a future release.
+There is currently no admin UI or REST API for reading audit events for all users, and operators must query the table directly with SQL. A read endpoint may ship in a future release.
 
 ## What gets recorded
 

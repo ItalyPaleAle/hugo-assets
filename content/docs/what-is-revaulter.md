@@ -3,7 +3,9 @@ title: "What is Revaulter"
 weight: 21
 ---
 
-Revaulter is a self-hosted service that turns WebAuthn passkeys into encryption keys. Instead of storing keys on a server or in a vault, Revaulter derives them from a passkey directly in the user's browser; the server never sees them. When a CLI or script needs to encrypt or decrypt something, the passkey holder authenticates and the browser performs the operation locally.
+Revaulter is a self-hosted service that turns WebAuthn passkeys into encryption keys.
+
+Instead of storing keys on a server or in a vault, Revaulter derives them from a passkey directly in the user's browser; the server never sees them. When a CLI or script needs to encrypt or decrypt something, the passkey holder authenticates and the browser performs the operation locally.
 
 ## How it works
 
@@ -25,7 +27,7 @@ sequenceDiagram
 ```
 
 1. A CLI or script submits an encrypt or decrypt request to Revaulter, identified by a per-user request key.
-2. Revaulter stores the end-to-end encrypted (E2EE) request in its database and sends a webhook notification to the passkey holder.
+2. Revaulter stores the End-to-End Encrypted (E2EE) request in its database and sends a webhook notification to the passkey holder.
 3. The user opens the Revaulter web UI and authenticates with their WebAuthn passkey (with optional password second factor).
 4. The browser derives the encryption key from the passkey via WebAuthn PRF, performs the cryptographic operation locally using WebCrypto, and encrypts the result back to the CLI. The server never sees the plaintext or the user's keys.
 5. The encrypted result is relayed back to the CLI, which decrypts it locally using its ephemeral private key.
@@ -38,11 +40,11 @@ Encryption keys are derived from the passkey in the browser and never leave the 
 - The server never derives or holds the user's primary key.
 - The server never performs the requested encryption or decryption itself.
 - The server never sees plaintext payloads: it stores only opaque, encrypted envelopes.
-- All sensitive cryptographic operations happen in the user's browser using the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API).
+- All sensitive cryptographic operations happen in the user's browser using the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) or JavaScript-browser cryptography ([noble](https://paulmillr.com/noble/)).
 - Request payloads are encrypted end-to-end between the CLI and the browser.
 - Response envelopes use hybrid ECDH P-256 + ML-KEM-768 key agreement for post-quantum transport security.
 
-For a full description of the cryptographic architecture, see [Cryptography architecture](/docs/crypto-architecture/).
+For a full description of the cryptographic architecture, see [Cryptography architecture](/docs/crypto-architecture).
 
 ## Self-hosted
 
@@ -54,7 +56,7 @@ Requirements are minimal:
 - A database: **SQLite** (file-based) or **PostgreSQL**
 - HTTPS access for the web UI, via TLS certificates or a reverse proxy (HTTPS is required because of WebCrypto)
 
-See [Installing Revaulter](/docs/installing-revaulter/) for setup instructions.
+See [Installing Revaulter](/docs/installing-revaulter) for setup instructions.
 
 ## Supported passkeys
 
@@ -68,15 +70,23 @@ Some supported configurations include:
 - Chrome/Edge or Samsung Internet on Android, with Google Password Manager or Security Keys
 - 1Password on macOS 15+, Android, and iOS 18.4+
 
+## Supported operations
+
+Revaulter supports three operations:
+
+- **Encrypt** — encrypt a plaintext value (`A256GCM` / AES-256-GCM)
+- **Decrypt** — decrypt a ciphertext value (`A256GCM` / AES-256-GCM)
+- **Sign** — produce a digital signature over a SHA-256 digest (`ES256` / ECDSA P-256 + SHA-256)
+
+Encryption/decryption keys and signing keys are derived deterministically from the passkey holder's primary key, the key label, and the algorithm. Published signing public keys can optionally be fetched by a stable key ID in JWK or PEM form. See the [cryptography architecture](./crypto-architecture) for details.
+
 ## Webhook notifications
 
 When a request is submitted, Revaulter sends a webhook notification so the passkey holder knows a request is waiting. Three formats are supported:
 
-| Format | Description |
-|--------|-------------|
-| `plain` | Plain text body (`text/plain`) — works with any generic webhook consumer |
-| `slack` | Slack-compatible JSON payload — works with Slack and Slack-compatible services |
-| `discord` | Discord webhook — uses Slack-compatible format via Discord's `/slack` endpoint |
+- `plain`: Plain text body (`text/plain`), works with any generic webhook consumer
+- `slack`: Slack-compatible JSON payload, works with Slack and Slack-compatible services
+- `discord`: Discord webhook, uses Slack-compatible format via Discord's `/slack` endpoint
 
 Webhook notifications include:
 
@@ -87,13 +97,3 @@ Webhook notifications include:
 - A link to open the Revaulter web UI
 
 An optional `webhookKey` configuration value lets you send an `Authorization` header with each webhook request.
-
-## Supported operations
-
-Revaulter supports three operations:
-
-- **Encrypt** — encrypt a plaintext value (`A256GCM` / AES-256-GCM)
-- **Decrypt** — decrypt a ciphertext value (`A256GCM` / AES-256-GCM)
-- **Sign** — produce a digital signature over a SHA-256 digest (`ES256` / ECDSA P-256 + SHA-256)
-
-Encryption/decryption keys and signing keys are derived deterministically from the passkey holder's primary key, the key label, and the algorithm. Published signing public keys can optionally be fetched by a stable key ID in JWK or PEM form. See the [cryptography architecture](/docs/crypto-architecture/) for details.

@@ -25,11 +25,12 @@
 
   </a>
 
+  <div class="header-actions">
   <!-- GitHub button -->
   {{- with .Site.Params.github_url }}
   <a
     href="{{ . }}"
-    class="gh-button"
+    class="gh-button header-gh-button"
     target="_blank"
     rel="noopener noreferrer"
     aria-label="{{ $.Site.Title }} on GitHub"
@@ -47,5 +48,12 @@
     <span class="sr-only">GitHub</span>
   </a>
   {{- end }}
+
+  <button class="mobile-menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="site-nav">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+      <path d="M3 5h14M3 10h14M3 15h14"/>
+    </svg>
+  </button>
+  </div>
 
 </header>

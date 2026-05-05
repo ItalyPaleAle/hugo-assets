@@ -44,7 +44,7 @@ You now have:
 Anyone with the public key can encrypt. No Revaulter interaction is needed:
 
 ```bash
-age -r age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
+age -r age1xxxxxxxxxxxxxxxxx \
   -o backup.tar.age \
   backup.tar
 ```

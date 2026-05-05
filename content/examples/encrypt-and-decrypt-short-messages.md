@@ -7,7 +7,7 @@ Use Revaulter to encrypt and decrypt short sensitive values with passkey approva
 
 The **payload limit is 100 KB**: Revaulter sends the encrypted request to the browser, where the passkey holder authenticates and the browser performs the operation locally.
 
-For larger files or messages, use Revaulter to wrap a file-encryption key instead; see [Encrypting large files with age and Revaulter](./encrypting-large-files-with-age-and-revaulter.md).
+For larger files or messages, use Revaulter to wrap a file-encryption key instead; see [Encrypting large files with age and Revaulter](/examples/encrypting-large-files-with-age-and-revaulter).
 
 ## Encrypt a message
 

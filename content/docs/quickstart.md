@@ -35,4 +35,4 @@ Then start the server with `docker compose up`, open the web UI, and create your
 
 ## Full setup instructions
 
-See [Installing Revaulter](./installing-revaulter.md) for more details on how to install and run Revaulter.
+See [Installing Revaulter](/docs/installing-revaulter) for more details on how to install and run Revaulter.

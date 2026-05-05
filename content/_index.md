@@ -9,51 +9,17 @@ Encryption keys and signing keys don't belong in environment variables or on dis
 
 **What you can use Revaulter for:**
 
-- Unlock encrypted disks at boot
-- Protect backup repository passwords
-- SSH logins with a passkey-backed SSH agent
-- Sign release binaries from CI
-- Issue long-lived JWTs
-- Wrap database and TLS keys
-- Encrypt/decrypt arbitrary messages
+- [Encrypt/decrypt messages, secrets, keys](/examples/encrypt-and-decrypt-short-messages)
+- [Unlock encrypted disks at boot](/examples/unlocking-luks-encrypted-drives-at-boot)
+- [Protect backup repository passwords](/examples/backing-up-with-restic)
+- [SSH logins with a passkey-backed SSH agent](/examples/authenticate-to-ssh-servers)
+- [Sign release binaries from CI](/examples/signing-a-release-binary-from-github-actions)
+- [Issue long-lived JWTs](/examples/issuing-a-long-lived-jwt)
+- [Encrypt/decrypt very large files with age and Revaulter](/examples/encrypting-large-files-with-age-and-revaulter)
 
-{{< figure light="docs/img/readme-screenshot-light.png" dark="docs/img/readme-screenshot-dark.png" alt="Screenshot of Revaulter, showing 3 requests pending approval: one for encrypting, one for signing, one for decrypting" caption="Screenshot of Revaulter, showing 3 requests pending approval: one for encrypting, one for signing, one for decrypting" resize="1200x webp q80" >}}
+{{< figure light="docs/img/readme-screenshot-light.png" dark="docs/img/readme-screenshot-dark.png" alt="Screenshot of Revaulter, showing 3 requests pending approval: one for encrypting, one for signing, one for decrypting" resize="1200x webp q80" >}}
 
-## Usage examples
-
-### Encrypt and decrypt any message
-
-Protect short sensitive values with your passkey, including API tokens, connection strings, TLS private keys, and wrapped secrets. Revaulter sends the request to the browser for local crypto, so payloads are limited to 100 KB. [See full example](/examples/encrypt-and-decrypt-short-messages/) in the docs.
-
-### Wrap encryption keys safely
-
-Use Revaulter to wrap (encrypt) database encryption keys, TLS private keys, or any other key material. The wrapped key can be stored alongside the data it protects, only someone with the right passkey can unwrap it.
-
-For example, you can use Revaulter together with age to encrypt large files: [see full example](/examples/encrypting-large-files-with-age-and-revaulter/) in the docs.
-
-### Unlock encrypted disks at boot
-
-Integrate Revaulter into your boot process to unlock LUKS/dm-crypt volumes. A script calls `revaulter-cli decrypt` to retrieve the disk encryption key, and an admin authenticates with their passkey to release it. No unattended keys on disk. [See full example](/examples/unlocking-luks-encrypted-drives-at-boot/) in the docs.
-
-### Wrap restic backup repository passwords
-
-Wrap your [restic](https://restic.net) repository password with Revaulter and hook it into restic's `--password-command`. The backup script gets the password only after a passkey holder approves — even a fully compromised backup host can't restore the repository on its own. [See full example](/examples/backing-up-with-restic/) in the docs.
-
-### Authenticate to SSH servers with a passkey-backed SSH agent
-
-Run `revaulter ssh-agent` as your local SSH agent so SSH authentication requests are approved through Revaulter in the browser. SSH servers use normal SSH public keys, while each login requires passkey approval. [See the SSH server authentication example](/examples/authenticate-to-ssh-servers/) in the docs.
-
-### Sign release binaries from CI
-
-Run `revaulter-cli sign` from a GitHub Actions workflow to produce a signature over a release artifact. The signing key never touches the runner, the workflow pauses while a maintainer approves the request from their phone, and the resulting `.sig` is a 64-byte raw `r || s` ECDSA signature that any ECDSA library can verify. [See full example](/examples/signing-a-release-binary-from-github-actions/) in the docs.
-
-### Issue passkey-approved JWTs
-
-Mint long-lived ES256 JWTs (service-to-service tokens, installer licenses, break-glass credentials) where every issuance is reviewed in-browser before signing. The output is a standard compact JWS verifiable by any JOSE library. [See full example](/examples/issuing-a-long-lived-jwt/) in the docs.
-
-### Verify signatures with a published key
-
-Revaulter publishes the public half of every signing key on a cacheable, unauthenticated endpoint as both PEM and JWK. Verifiers fetch it once, pin it, and run fully offline from then on: there's no runtime dependency on Revaulter. [See full example](/examples/fetching-a-public-key-to-verify-a-signature/) in the docs.
+Revaulter is [fully open source](https://github.com/ItalyPaleAle/revaulter) and released under a permissive MIT license.
 
 ## How it works
 

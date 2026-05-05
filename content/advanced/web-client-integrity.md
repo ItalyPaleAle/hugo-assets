@@ -24,31 +24,31 @@ A failing run reports the specific file(s) that differ from the signed manifest 
 
 ## What it actually checks
 
-At release time, the GitHub Actions release workflow:
+**At release/build time**, the GitHub Actions release workflow:
 
 1. Builds the web client (`client/web/dist/`).
 2. Hashes every file and writes a **plain-text manifest** (`path|size|sha256` per line, plus version/commit/build-date headers).
 3. Signs the manifest bytes with **cosign keyless**. The signer's identity is the release workflow itself, recorded in Sigstore's **Rekor** transparency log.
-4. Embeds both the manifest and the cosign bundle into the server binary via `//go:embed`.
+4. Embeds both the manifest and the cosign bundle into the server binary.
 
-At verification time, `revaulter-cli check`:
+**At verification time**, `revaulter-cli check`:
 
-1. Fetches `GET /info` to read the server's version, commit, and whether it has an integrity manifest at all.
-2. Fetches `GET /info/integrity` to retrieve the signed manifest + cosign bundle.
-3. Verifies the cosign signature against **Sigstore infrastructure roots embedded in the CLI binary**:
-   - The signing cert chains to Fulcio's root CA;
-   - Its subject matches this repo's release workflow on a tag or another ref baked into the CLI build (like the `main` branch);
-   - Its Rekor transparency-log entry is genuine.
-4. Asserts the manifest's version and commit match the server's `/info` response (downgrade protection).
-5. `GET`s every file listed in the manifest from the server, hashes it, compares to the manifest. Any mismatch → non-zero exit with the offending paths.
+1. Fetches `GET /info` to read the server's version, commit, and whether it has an integrity manifest at all
+2. Fetches `GET /info/integrity` to retrieve the signed manifest + cosign bundle
+3. Verifies the cosign signature against the Sigstore infrastructure roots embedded in the CLI binary:
+   - the signing cert chains to Fulcio's root CA
+   - its subject matches this repo's release workflow on a tag or another ref baked into the CLI build (e.g. a `main` branch for edge builds)
+   - its Rekor transparency-log entry is genuine
+4. Asserts the manifest's version and commit match the server's `/info` response (downgrade protection)
+5. `GET`s every file listed in the manifest from the server, hashes it, compares to the manifest. Any mismatch causes an exit with non-zero status code, printing out the offending paths.
 
 If any of those steps fails, you have evidence that either the server binary has been swapped, the assets have been replaced after install, or a proxy is rewriting responses in-flight.
 
 ## Trust model
 
-Cosign keyless has **no persistent per-release signing key**. Each signing operation uses an ephemeral keypair whose public half is bound to the workflow's OIDC identity by a short-lived Fulcio-issued X.509 certificate; the private half is immediately discarded. The public key that verifies a release lives *inside the cosign bundle*, inside a cert signed by Fulcio.
+Cosign keyless has no persistent per-release signing key. Each signing operation uses an ephemeral keypair whose public half is bound to the workflow's OIDC identity by a short-lived Fulcio-issued X.509 certificate; the private half is immediately discarded. The public key that verifies a release lives *inside the cosign bundle*, inside a cert signed by Fulcio.
 
-What the CLI embeds is therefore **not** a signing key — it's Sigstore's stable infrastructure trust roots:
+What the CLI embeds is therefore not a signing key, but Sigstore's stable infrastructure trust roots:
 
 | Embedded material | What it verifies |
 |---|---|
@@ -86,10 +86,10 @@ Sign-Web-Client: yes
 
 ## What the `check` command does *not* protect against
 
-- **The CLI binary itself being compromised.** That's covered by a separate layer: the CLI is published with SLSA provenance (`attest-build-provenance`) and can be verified with `gh attestation verify`. If you don't trust your CLI, no integrity check it reports is meaningful.
+- **The CLI binary itself being compromised.** That's covered by a separate layer: the CLI is published by GitHub Actions with SLSA provenance and can be verified with `gh attestation verify`. If you don't trust your CLI, no integrity check it reports is meaningful.
 - **Browser-side runtime protection for normal users.** `check` is an operator/auditor tool, not a browser plugin. Real users visiting the UI have no way to run it.
-- **Files outside `client/web/dist/`.** The Go server binary itself is attested separately by the release workflow (`attest-build-provenance`) and can be verified with `gh attestation verify`. The web client manifest covers only what the browser loads.
-- **Server-side code behavior.** Correct assets running on a correct server are still only as trustworthy as the server's encryption protocol (documented in [04-crypto-architecture.md](/docs/crypto-architecture/)).
+- **The server binary itself being compromised** The Go server binary itself is attested separately by the GitHub release workflow and can be verified with `gh attestation verify`. The web client manifest covers only what the browser loads.
+- **Server-side code behavior.** Correct assets running on a correct server are still only as trustworthy as the server's encryption protocol (documented in [Cryptography Architecture](/docs/crypto-architecture/)).
 
 ## Running from Docker
 
