@@ -41,6 +41,12 @@
             ]
         },
         {
+            "source": "/(.*?).svg",
+            "headers": [
+                { "key": "Cache-Control", "value": "public, max-age=1200000" }
+            ]
+        },
+        {
             "source": "/(js|css)/(.*?)",
             "headers": [
                 { "key": "Cache-Control", "value": "public, max-age=1200000" }
