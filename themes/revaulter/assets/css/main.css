@@ -3,6 +3,22 @@
 @source "../layouts/**/*.html";
 @source "../../../content/**/*.md";
 
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/geist/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -483,7 +499,7 @@ body {
   }
 
   .mobile-menu-toggle {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
     width: 2.25rem;
@@ -540,7 +556,7 @@ body {
   }
 
   .mobile-nav-gh-button {
-    display: inline-flex;
+    display: inline-flex !important;
     margin-top: 0.5rem;
   }
 

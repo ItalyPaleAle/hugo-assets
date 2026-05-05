@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npm run build:js && tailwindcss -i ./assets/css/main.css -o ./static/css/main.css --minify",
+    "build": "npm run build:fonts && npm run build:js && tailwindcss -i ./assets/css/main.css -o ./static/css/main.css --minify",
+    "build:fonts": "mkdir -p ./static/fonts/geist && cp ./node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2 ./static/fonts/geist/Geist-Variable.woff2 && cp ./node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2 ./static/fonts/geist/GeistMono-Variable.woff2",
     "build:js": "esbuild ./assets/js/mermaid-init.js --bundle --format=esm --target=es2022 --minify --outfile=./static/js/mermaid-init.js",
     "watch": "tailwindcss -i ./assets/css/main.css -o ./static/css/main.css --watch"
   },
@@ -13,6 +14,7 @@
     "tailwindcss": "4.2.4"
   },
   "dependencies": {
+    "geist": "^1.7.0",
     "mermaid": "11.12.0"
   }
 }

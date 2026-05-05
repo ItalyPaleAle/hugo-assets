@@ -2,6 +2,7 @@ baseURL = "https://revaulter.italypaleale.me/"
 locale = "en-us"
 title = "Revaulter"
 theme = "revaulter"
+disableKinds = ["RSS"]
 
 # Required for render hooks + unsafe HTML in markdown
 [markup]
@@ -31,6 +32,3 @@ theme = "revaulter"
 
 # Taxonomy pages aren't needed for a docs site
 [taxonomies]
-
-# Disable RSS / sitemap if not needed (optional)
-# disableKinds = ["RSS"]
