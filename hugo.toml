@@ -1,0 +1,12 @@
+[module]
+  [[module.mounts]]
+    source = "themes/docs/assets"
+    target = "assets"
+
+  [[module.mounts]]
+    source = "themes/docs/layouts"
+    target = "layouts"
+
+  [[module.mounts]]
+    source = "themes/docs/static"
+    target = "static"
