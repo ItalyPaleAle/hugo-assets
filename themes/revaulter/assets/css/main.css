@@ -406,6 +406,65 @@ body {
   padding: 1rem;
 }
 
+.mermaid svg .actor,
+.mermaid svg .actor-top,
+.mermaid svg .actor-bottom,
+.mermaid svg .actor-box,
+.mermaid svg rect.actor,
+.mermaid svg rect.actor-top,
+.mermaid svg rect.actor-bottom,
+.mermaid svg rect.actor-box {
+  fill: var(--panel) !important;
+  stroke: var(--rule) !important;
+}
+
+.mermaid svg .actor-line,
+.mermaid svg line.actor-line,
+.mermaid svg .messageLine0,
+.mermaid svg .messageLine1,
+.mermaid svg .loopLine,
+.mermaid svg .flowchart-link,
+.mermaid svg .edgePath .path,
+.mermaid svg .transition,
+.mermaid svg .state-start,
+.mermaid svg .state-end {
+  stroke: var(--ink-muted) !important;
+}
+
+.mermaid svg #arrowhead path,
+.mermaid svg #crosshead path,
+.mermaid svg .arrowheadPath,
+.mermaid svg .arrowMarkerPath,
+.mermaid svg marker path,
+.mermaid svg marker circle,
+.mermaid svg marker polygon {
+  fill: var(--ink-muted) !important;
+  stroke: var(--ink-muted) !important;
+}
+
+.mermaid svg .divider,
+.mermaid svg .note,
+.mermaid svg rect.note,
+.mermaid svg .labelBox,
+.mermaid svg .node rect,
+.mermaid svg .node polygon,
+.mermaid svg .node circle,
+.mermaid svg .node ellipse {
+  stroke: var(--rule) !important;
+}
+
+.mermaid svg .messageText,
+.mermaid svg .labelText,
+.mermaid svg .loopText,
+.mermaid svg .noteText,
+.mermaid svg .edgeLabel,
+.mermaid svg .edgeLabel p,
+.mermaid svg .edgeLabel span {
+  color: var(--ink-soft) !important;
+  fill: var(--ink-soft) !important;
+  stroke: none !important;
+}
+
 @media (max-width: 960px) {
   body > div.grid {
     grid-template-columns: 1fr !important;
