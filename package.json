@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo server",
-    "build": "HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo --gc --minify",
+    "build": "npm --prefix themes/revaulter run build && HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo --gc --minify",
     "theme:install": "npm --prefix themes/revaulter install"
   }
 }

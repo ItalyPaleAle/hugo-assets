@@ -3,22 +3,6 @@ locale = "en-us"
 title = "Revaulter"
 theme = "revaulter"
 
-[[module.mounts]]
-  source = "themes/revaulter/node_modules/mermaid/dist"
-  target = "static/vendor/mermaid"
-
-[[module.mounts]]
-  source = "themes/revaulter/static"
-  target = "static"
-
-[[module.mounts]]
-  source = "static"
-  target = "static"
-
-[[module.mounts]]
-  source = "assets"
-  target = "assets"
-
 # Required for render hooks + unsafe HTML in markdown
 [markup]
   [markup.highlight]
@@ -44,13 +28,6 @@ theme = "revaulter"
   github_url    = "https://github.com/itaypaleale/revaulter"
   github_repo   = "https://github.com/itaypaleale/revaulter"
   github_branch = "main"
-
-[security]
-  [node]
-    [security.node.permissions]
-      allowAddons = ["postcss", "tailwindcss"]
-      allowRead = ["."]
-      allowWorker = ["postcss", "tailwindcss"]
 
 # Taxonomy pages aren't needed for a docs site
 [taxonomies]

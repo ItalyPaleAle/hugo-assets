@@ -3,17 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "tailwindcss -i ./assets/css/main.css -o ./assets/css/main.built.css --minify",
-    "watch": "tailwindcss -i ./assets/css/main.css -o ./assets/css/main.built.css --watch"
+    "build": "npm run build:js && tailwindcss -i ./assets/css/main.css -o ./static/css/main.css --minify",
+    "build:js": "esbuild ./assets/js/mermaid-init.js --bundle --format=esm --target=es2022 --minify --outfile=./static/js/mermaid-init.js",
+    "watch": "tailwindcss -i ./assets/css/main.css -o ./static/css/main.css --watch"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.2.4",
-    "@tailwindcss/postcss": "4.2.4",
-    "postcss": "8.5.10",
-    "postcss-cli": "11.0.1",
+    "esbuild": "0.28.0",
     "tailwindcss": "4.2.4"
   },
   "dependencies": {
-    "mermaid": "^11.12.0"
+    "mermaid": "11.12.0"
   }
 }

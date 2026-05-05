@@ -1,2 +1,3 @@
 node_modules
-assets/css/main.built.css
+static/css/main.css
+static/js/mermaid-init.js

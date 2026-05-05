@@ -14,15 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-<!-- Theme CSS (built from assets/css/main.css via Tailwind 4 + PostCSS) -->
-{{- $css := resources.Get "css/main.css" -}}
-{{- if hugo.IsProduction -}}
-  {{- $css = $css | css.PostCSS | minify | fingerprint -}}
-{{- else -}}
-  {{- $css = $css | css.PostCSS -}}
-{{- end -}}
-<link rel="stylesheet" href="{{ $css.RelPermalink }}"
-  {{- if hugo.IsProduction }} integrity="{{ $css.Data.Integrity }}"{{ end }} />
+<link rel="stylesheet" href="{{ "css/main.css" | relURL }}" />
 
 <!-- Favicon -->
 {{- with .Site.Params.favicon }}
