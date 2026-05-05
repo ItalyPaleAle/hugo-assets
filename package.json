@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "npm run theme:build && HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo server",
-    "build": "npm run theme:build && HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo --gc --minify --cleanDestinationDir",
+    "build": "npm run theme:build && HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo --gc --minify --cleanDestinationDir && npm run link",
+    "link": "ln -s -v themes/revaulter/node_modules",
     "theme:build": "npm --prefix themes/revaulter run build",
     "theme:install": "npm --prefix themes/revaulter install"
   }
