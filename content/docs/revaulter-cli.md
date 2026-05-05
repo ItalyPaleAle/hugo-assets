@@ -3,9 +3,7 @@ title: "Using the Revaulter CLI"
 weight: 27
 ---
 
-The Revaulter CLI (`revaulter-cli`) is the primary way to submit encrypt, decrypt, and sign requests.
-
-**Using the CLI is strongly recommended** over calling the REST API directly: it handles transport key generation, end-to-end encryption, long-polling, and result decryption automatically.
+The Revaulter CLI (`revaulter-cli`) is the primary way to submit encrypt, decrypt, and sign requests. It ensures requests are End-to-End Encrypted as they are sent to the server.
 
 ## Installing the CLI
 
