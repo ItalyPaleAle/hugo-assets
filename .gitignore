@@ -1,15 +1,11 @@
-.pnpm-store
-node_modules
-
-# Created by https://www.toptal.com/developers/gitignore/api/linux,macos,windows,hugo,visualstudiocode
-# Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,windows,hugo,visualstudiocode
+# Created by https://www.toptal.com/developers/gitignore/api/windows,macos,linux,visualstudiocode,hugo
+# Edit at https://www.toptal.com/developers/gitignore?templates=windows,macos,linux,visualstudiocode,hugo
 
 ### Hugo ###
 # Generated files by hugo
 /public/
 /resources/_gen/
 /assets/jsconfig.json
-/.hugo_cache/
 hugo_stats.json
 
 # Executable may be added to repository
@@ -113,4 +109,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/linux,macos,windows,hugo,visualstudiocode
+# End of https://www.toptal.com/developers/gitignore/api/windows,macos,linux,visualstudiocode,hugo

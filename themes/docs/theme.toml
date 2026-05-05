@@ -1,10 +1,10 @@
-name = "Revaulter"
+name = "docs"
 license = "MIT"
 licenselink = "https://opensource.org/licenses/MIT"
 min_version = "0.160.0"
 
 [author]
-  name = "Revaulter"
+  name = "ItalyPaleAle"
 
 [features]
   [features.sharedAssets]
