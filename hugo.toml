@@ -25,10 +25,11 @@ disableKinds = ["RSS"]
     ordered = false
 
 [params]
-  description   = "Encrypt, decrypt, and sign with passkeys"
-  github_url    = "https://github.com/itaypaleale/revaulter"
-  github_repo   = "https://github.com/itaypaleale/revaulter"
-  github_branch = "main"
+  description        = "Encrypt, decrypt, and sign with passkeys"
+  github_url         = "https://github.com/itaypaleale/revaulter"
+  github_repo        = "https://github.com/itaypaleale/revaulter"
+  github_branch      = "main"
+  PlausibleAnalytics = true
 
 # Taxonomy pages aren't needed for a docs site
 [taxonomies]
