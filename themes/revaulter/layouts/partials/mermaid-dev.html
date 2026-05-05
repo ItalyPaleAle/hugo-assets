@@ -1,4 +1,0 @@
-{{- if and (not hugo.IsProduction) (.Page.Store.Get "hasMermaid") -}}
-  {{- $mermaid := resources.Get "js/mermaid-dev.js" | js.Build (dict "format" "esm") -}}
-  <script type="module" src="{{ $mermaid.RelPermalink }}"></script>
-{{- end -}}

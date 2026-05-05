@@ -3,6 +3,22 @@ locale = "en-us"
 title = "Revaulter"
 theme = "revaulter"
 
+[[module.mounts]]
+  source = "themes/revaulter/node_modules/mermaid/dist"
+  target = "static/vendor/mermaid"
+
+[[module.mounts]]
+  source = "themes/revaulter/static"
+  target = "static"
+
+[[module.mounts]]
+  source = "static"
+  target = "static"
+
+[[module.mounts]]
+  source = "assets"
+  target = "assets"
+
 # Required for render hooks + unsafe HTML in markdown
 [markup]
   [markup.highlight]

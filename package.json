@@ -4,11 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo server",
-    "build": "HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo --gc --minify && node scripts/render-mermaid.mjs",
+    "build": "HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo --gc --minify",
     "theme:install": "npm --prefix themes/revaulter install"
-  },
-  "devDependencies": {
-    "@mermaid-js/mermaid-cli": "^11.12.0",
-    "jsdom": "^29.1.0"
   }
 }

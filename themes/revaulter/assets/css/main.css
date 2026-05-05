@@ -406,30 +406,6 @@ body {
   padding: 1rem;
 }
 
-.mermaid-svg {
-  min-width: max-content;
-}
-
-.mermaid-svg svg {
-  display: block;
-  max-width: none;
-  height: auto;
-}
-
-.mermaid-svg-dark {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  .mermaid-svg-light {
-    display: none;
-  }
-
-  .mermaid-svg-dark {
-    display: block;
-  }
-}
-
 @media (max-width: 960px) {
   body > div.grid {
     grid-template-columns: 1fr !important;

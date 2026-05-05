@@ -1,9 +1,10 @@
-import mermaid from 'mermaid';
+import mermaid from '/vendor/mermaid/mermaid.esm.min.mjs';
 
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-function themeVariables() {
+function getThemeVariables() {
   const dark = darkQuery.matches;
+
   return {
     primaryColor: dark ? '#fb923c' : '#c2410c',
     primaryTextColor: dark ? '#0f0f0f' : '#fafafa',
@@ -25,7 +26,7 @@ function initializeMermaid() {
     startOnLoad: false,
     theme: darkQuery.matches ? 'dark' : 'default',
     fontFamily: 'Geist, system-ui, sans-serif',
-    themeVariables: themeVariables(),
+    themeVariables: getThemeVariables(),
   });
 }
 
@@ -38,10 +39,10 @@ await renderMermaid();
 
 darkQuery.addEventListener('change', async () => {
   document.querySelectorAll('.mermaid').forEach((el) => {
-    const source = el.dataset.source || el.textContent;
-    el.dataset.source = source;
+    const src = el.dataset.src || el.textContent;
+    el.dataset.src = src;
     el.removeAttribute('data-processed');
-    el.textContent = source;
+    el.textContent = src;
   });
   await renderMermaid();
 });
