@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npm run theme:build && HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo server",
-    "build": "npm run theme:build && HUGO_CACHEDIR=$PWD/.hugo_cache PATH=$PWD/themes/revaulter/node_modules/.bin:$PATH hugo --gc --minify --cleanDestinationDir",
-    "theme:build": "npm --prefix themes/revaulter run build",
-    "theme:install": "npm --prefix themes/revaulter install"
+    "dev": "hugo server",
+    "build": "hugo --gc --minify --cleanDestinationDir"
+  },
+  "dependencies": {
+    "@vercel/functions": "3.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.2"
   }
 }

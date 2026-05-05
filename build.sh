@@ -11,12 +11,6 @@ hugo version
 echo "\033[0;1mCleaning destination directory...\033[0;0m"
 rm -rf public
 
-# Build the theme
-# Then symlink node_modules so hugo can build the site
-echo "\033[0;1mBuilding theme...\033[0;0m"
-(cd themes/revaulter && npm ci && npm run build)
-[ ! -e node_modules ] && ln -s -v themes/revaulter/node_modules
-
 # Compile the code with the "production" environment
 echo "\033[0;1mBuilding...\033[0;0m"
 hugo --environment=production --minify
