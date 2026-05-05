@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 @source "../layouts/**/*.html";
-@source "../../../content/**/*.md";
 
 @font-face {
   font-family: "Geist";
