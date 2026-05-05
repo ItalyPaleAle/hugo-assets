@@ -33,6 +33,9 @@ disableKinds = ["RSS"]
 
   [params.theme]
     scheme = "rust"
+    icon_light = "icon-light.svg"
+    icon_dark = "icon-dark.svg"
+    favicon = "icon-light.svg"
 
 # Taxonomy pages aren't needed for a docs site
 [taxonomies]

@@ -1,23 +1,28 @@
 <header class="sticky top-0 z-50 h-16 flex items-center justify-between px-8 bg-bg border-b border-rule shrink-0">
+  {{- $iconLight := .Site.Params.theme.icon_light | default .Site.Params.theme.icon -}}
+  {{- $iconDark := .Site.Params.theme.icon_dark -}}
+  {{- $hasDarkIcon := and $iconDark (ne $iconDark $iconLight) -}}
 
   <!-- Logo + project name -->
   <a href="{{ "/" | relURL }}" class="flex items-center gap-3 no-underline" aria-label="{{ .Site.Title }} home">
-    <!-- Light icon (hidden in dark mode) -->
+    {{- if $iconLight }}
     <img
-      src="{{ "icon-light.svg" | relURL }}"
+      src="{{ $iconLight | relURL }}"
       width="42" height="42"
-      alt="{{ .Site.Title }} logo"
-      class="block dark:hidden rounded-md shrink-0"
+      alt=""
+      class="{{ if $hasDarkIcon }}block dark:hidden{{ else }}block{{ end }} rounded-md shrink-0"
       aria-hidden="true"
     />
-    <!-- Dark icon (shown in dark mode) -->
+    {{- end }}
+    {{- if $hasDarkIcon }}
     <img
-      src="{{ "icon-dark.svg" | relURL }}"
+      src="{{ $iconDark | relURL }}"
       width="42" height="42"
-      alt="{{ .Site.Title }} logo"
+      alt=""
       class="hidden dark:block rounded-md shrink-0"
       aria-hidden="true"
     />
+    {{- end }}
 
     <span class="text-xl md:text-2xl font-semibold tracking-[-0.01875rem] text-ink leading-none">
       {{ .Site.Title }}

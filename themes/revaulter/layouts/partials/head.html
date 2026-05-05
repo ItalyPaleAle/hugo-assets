@@ -12,11 +12,8 @@
 {{- $scheme := partial "theme-scheme.html" . -}}
 <link rel="stylesheet" href="{{ printf "css/main-%s.css" $scheme | relURL }}" />
 
-<!-- Favicon -->
-{{- with .Site.Params.favicon }}
-<link rel="icon" href="{{ . }}" />
-{{- else }}
-<link rel="icon" href="/icon-light.svg" type="image/svg+xml" />
+{{- with .Site.Params.theme.favicon | default .Site.Params.favicon }}
+<link rel="icon" href="{{ . | relURL }}" />
 {{- end }}
 
 {{- template "_internal/opengraph.html" . }}
