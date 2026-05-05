@@ -31,5 +31,8 @@ disableKinds = ["RSS"]
   github_branch      = "main"
   PlausibleAnalytics = true
 
+  [params.theme]
+    scheme = "rust"
+
 # Taxonomy pages aren't needed for a docs site
 [taxonomies]

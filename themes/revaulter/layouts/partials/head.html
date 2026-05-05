@@ -9,7 +9,8 @@
 </title>
 {{- with .Params.description }}<meta name="description" content="{{ . }}" />{{- end }}
 
-<link rel="stylesheet" href="{{ "css/main.css" | relURL }}" />
+{{- $scheme := partial "theme-scheme.html" . -}}
+<link rel="stylesheet" href="{{ printf "css/main-%s.css" $scheme | relURL }}" />
 
 <!-- Favicon -->
 {{- with .Site.Params.favicon }}

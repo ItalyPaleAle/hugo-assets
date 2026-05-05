@@ -1,4 +1,2 @@
 node_modules
-static/fonts/
-static/css/main.css
-static/js/mermaid-init.js
+.tmp/
