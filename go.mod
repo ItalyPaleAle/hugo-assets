@@ -1,3 +1,3 @@
-module github.com/ItalyPaleAle/hugo-assets
+module github.com/italypaleale/hugo-assets
 
 go 1.24
