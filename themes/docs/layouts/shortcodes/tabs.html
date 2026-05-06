@@ -1,0 +1,20 @@
+{{- /*
+  {{< tabs >}}
+    {{< tab title="Go" >}}
+    ```go
+    fmt.Println("hello")
+    ```
+    {{< /tab >}}
+
+    {{< tab title="TypeScript" >}}
+    ```ts
+    console.log("hello")
+    ```
+    {{< /tab >}}
+  {{< /tabs >}}
+*/ -}}
+{{- $label := .Get "label" | default "Content tabs" -}}
+
+<div class="content-tabs" data-content-tabs data-tabs-label="{{ $label }}">
+  {{ .Inner }}
+</div>

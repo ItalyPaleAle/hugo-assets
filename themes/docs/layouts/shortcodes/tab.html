@@ -1,0 +1,13 @@
+{{- /*
+  Child shortcode for tabs.html.
+
+  title: visible tab label, required for clear authoring.
+*/ -}}
+{{- $title := .Get "title" | default (.Get 0) | default (printf "Tab %d" .Ordinal) -}}
+
+<section class="content-tab" data-tab-title="{{ $title }}">
+  <div class="content-tab-heading">{{ $title }}</div>
+  <div class="content-tab-body">
+    {{ .Inner | markdownify }}
+  </div>
+</section>

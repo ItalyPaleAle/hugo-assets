@@ -75,6 +75,74 @@
       });
     });
   })();
+
+  (function () {
+    const groups = document.querySelectorAll('[data-content-tabs]');
+    if (!groups.length) return;
+
+    groups.forEach((group, groupIndex) => {
+      const tabs = Array.from(group.querySelectorAll(':scope > .content-tab'));
+      if (!tabs.length) return;
+
+      const tabList = document.createElement('div');
+      tabList.className = 'content-tabs-list';
+      tabList.setAttribute('role', 'tablist');
+      tabList.setAttribute('aria-label', group.dataset.tabsLabel || 'Content tabs');
+
+      const buttons = tabs.map((tab, tabIndex) => {
+        const title = tab.dataset.tabTitle || `Tab ${tabIndex + 1}`;
+        const tabId = `content-tab-${groupIndex}-${tabIndex}`;
+        const panelId = `content-tab-panel-${groupIndex}-${tabIndex}`;
+        const button = document.createElement('button');
+
+        button.className = 'content-tabs-button';
+        button.type = 'button';
+        button.id = tabId;
+        button.textContent = title;
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-controls', panelId);
+
+        tab.id = panelId;
+        tab.setAttribute('role', 'tabpanel');
+        tab.setAttribute('aria-labelledby', tabId);
+        tabList.append(button);
+
+        return button;
+      });
+
+      function selectTab(nextIndex, focus) {
+        buttons.forEach((button, index) => {
+          const selected = index === nextIndex;
+          button.setAttribute('aria-selected', String(selected));
+          button.tabIndex = selected ? 0 : -1;
+          tabs[index].hidden = !selected;
+        });
+
+        if (focus) buttons[nextIndex].focus();
+      }
+
+      buttons.forEach((button, index) => {
+        button.addEventListener('click', () => selectTab(index, false));
+        button.addEventListener('keydown', (event) => {
+          const current = buttons.indexOf(event.currentTarget);
+          let next = current;
+
+          if (event.key === 'ArrowRight') next = (current + 1) % buttons.length;
+          if (event.key === 'ArrowLeft') next = (current - 1 + buttons.length) % buttons.length;
+          if (event.key === 'Home') next = 0;
+          if (event.key === 'End') next = buttons.length - 1;
+          if (next === current) return;
+
+          event.preventDefault();
+          selectTab(next, true);
+        });
+      });
+
+      group.prepend(tabList);
+      group.classList.add('is-enhanced');
+      selectTab(0, false);
+    });
+  })();
   </script>
 
 </body>
