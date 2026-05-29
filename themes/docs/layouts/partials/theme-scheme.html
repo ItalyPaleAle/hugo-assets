@@ -1,5 +1,5 @@
 {{- $scheme := .Site.Params.theme.scheme | default "rust" -}}
-{{- $valid := slice "blue" "rust" "teal" "violet" -}}
+{{- $valid := slice "amber" "blue" "emerald" "rose" "rust" "teal" "violet" -}}
 {{- if not (in $valid $scheme) -}}
   {{- errorf "Invalid params.theme.scheme %q. Valid schemes: %s" $scheme (delimit $valid ", ") -}}
 {{- end -}}
