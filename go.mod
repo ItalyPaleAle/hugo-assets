@@ -2,6 +2,6 @@ module github.com/italypaleale/hugo-assets
 
 go 1.26
 
-require github.com/evanw/esbuild v0.27.0
+require github.com/evanw/esbuild v0.28.1
 
-require golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
+require golang.org/x/sys v0.46.0 // indirect
