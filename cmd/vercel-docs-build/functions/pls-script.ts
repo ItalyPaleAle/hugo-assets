@@ -1,4 +1,5 @@
 import { getCache, getEnv, type RuntimeCache } from '@vercel/functions'
+import { getVercelOidcToken } from '@vercel/functions/oidc'
 
 // Cache the proxied script for 7 days in the runtime cache
 const runtimeCacheDuration = 86400 * 7
@@ -21,7 +22,7 @@ export default {
         status: 204,
         headers: {
           'cache-control': 'no-cache',
-        }
+        },
       })
     }
 
@@ -45,13 +46,18 @@ export default {
     // If there's no cached value, fetch from the upstream Plausible server
     if (!scriptContent || !headers) {
       try {
-        // Fetch from the upstream Plausible server
         const requestHeaders = new Headers()
-        const oidcToken = request.headers.get('x-vercel-oidc-token')
-        if (oidcToken) {
+
+        // Set the Authorization header with the Vercel OIDC token
+        const token = await getVercelOidcToken({
+          audience: process.env.PLAUSIBLE_OIDC_TOKEN_AUDIENCE ?? undefined,
+        })
+        if (token) {
           // Add the Vercel OIDC token to the request
-          requestHeaders.set('authorization', 'Bearer '+oidcToken)
+          requestHeaders.set('authorization', 'Bearer ' + token)
         }
+
+        // Fetch from the upstream Plausible server
         const upstreamResponse = await fetch(upstreamUrl, {
           headers: requestHeaders,
         })
