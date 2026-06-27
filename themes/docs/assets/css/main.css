@@ -199,12 +199,14 @@ body {
 }
 
 .code-block pre {
-  overflow-x: auto;
   margin: 0;
   padding: 1rem 3rem 1rem 1rem;
   font-family: var(--font-mono);
   font-size: 0.8125rem;
   line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: normal;
+  word-break: auto-phrase; /* Experimental: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/word-break#auto-phrase */
 }
 
 .code-copy {
