@@ -330,16 +330,17 @@ func writeOutputConfig() error {
 
 	// Point markdown responses at their HTML page as the canonical URL so search engines
 	// index the HTML, not the agent-facing markdown. Skipped when no base URL is known so
-	// the builder never emits a broken relative canonical.
+	// the builder never emits a broken relative canonical. Route src is PCRE, so the
+	// generic rule uses a negative lookahead to leave the home page to its own rule below.
 	base := canonicalBase()
 	if base != "" {
 		routes = append(routes,
 			outputRoute{
-				Source:   "^/(.+)\\.md$",
+				Source:   "^/(?!index\\.md$)(.+)\\.md$",
 				Headers:  map[string]string{"Link": fmt.Sprintf("<%s/$1/>; rel=\"canonical\"", base)},
 				Continue: true,
 			},
-			// Home is served at /index.md; this later match overrides the generic Link above
+			// Home has no clean ".md" sibling and is served at /index.md
 			outputRoute{
 				Source:   "^/index\\.md$",
 				Headers:  map[string]string{"Link": fmt.Sprintf("<%s/>; rel=\"canonical\"", base)},
