@@ -5,19 +5,21 @@ A documentation theme for Hugo, distributed as a Hugo Module.
 ## Markdown output (agent-friendly pages)
 
 Every page can be published as a plain‑markdown twin alongside its HTML, intended
-primarily for AI agents. For a page at `/docs/setup/`, Hugo also writes
-`/docs/setup/index.md` containing:
+primarily for AI agents. For a page at `/docs/setup/`, Hugo writes the markdown to
+the physical file `/docs/setup/index.md`, which is served on Vercel at the clean
+URL **`/docs/setup.md`** (see [Clean `.md` URLs on Vercel](#clean-md-urls-on-vercel)).
+The markdown contains:
 
 - the page title, description, and body as **markdown** (not HTML), with shortcodes
   expanded (`.RenderShortcodes`);
-- internal links rewritten to point at the markdown twin
-  (`[other](/docs/other/)` → `[other](/docs/other/index.md)`);
+- internal links rewritten to point at the clean markdown twin
+  (`[other](/docs/other/)` → `[other](/docs/other.md)`);
 - for section and home pages, a list of child pages linking to their `.md` twins.
 
 Each HTML page advertises its markdown twin in `<head>`:
 
 ```html
-<link rel="alternate" type="text/markdown" href="https://example.com/docs/setup/index.md" />
+<link rel="alternate" type="text/markdown" href="/docs/setup.md" />
 ```
 
 ### Enabling it in your site
@@ -39,9 +41,10 @@ That is the only configuration required. Rebuild and the `.md` files (plus the
 
 ### Notes & limitations
 
-- Published path is `/<page>/index.md` (next to the pretty HTML at `/<page>/`).
-  Producing a literal `/<page>.md` sibling would require global `uglyURLs`, which
-  would also make the HTML pages ugly — so it is intentionally not used.
+- Hugo writes the markdown to `/<page>/index.md` (next to the pretty HTML at
+  `/<page>/`); the clean `/<page>.md` URL is produced by the Vercel rewrite below.
+  The clean links therefore resolve **only through Vercel** — under `hugo server`
+  or another host, follow `/<page>/index.md` directly instead.
 - Link rewriting is a best‑effort transform on the markdown body. It rewrites
   **root‑relative** internal links (targets beginning with `/`). External links
   (`http`, `https`, `mailto`, `tel`), pure `#anchor` links, and any target
@@ -51,3 +54,42 @@ That is the only configuration required. Rebuild and the `.md` files (plus the
 - Shortcodes that emit HTML (e.g. `callout`, `tabs`, `figure`, `mermaid`) appear
   as HTML blocks in the markdown output. GitHub‑style alerts (`> [!NOTE]`) remain
   clean markdown blockquotes.
+
+## Clean `.md` URLs on Vercel
+
+Sites deploy through the Build Output API builder at `cmd/vercel-docs-build`, which
+runs Hugo and writes `.vercel/output/config.json`. The builder bakes in the routing
+that turns the physical `/<page>/index.md` files into clean URLs:
+
+- **Rewrite** — a request for `/docs/setup.md` is internally served from
+  `/docs/setup/index.md`; the clean URL stays in the address bar.
+- **Redirect** — a request for the physical `/docs/setup/index.md` returns a `308`
+  to `/docs/setup.md`, so the clean URL is the single public address.
+- **Canonical** — markdown responses carry a `Link: <…>; rel="canonical"` header
+  pointing at the HTML page, so search engines index the HTML, not the markdown.
+  The canonical origin comes from `VERCEL_PROJECT_PRODUCTION_URL` (set automatically
+  by Vercel) or the `DOCS_CANONICAL_BASE` override; if neither is set the canonical
+  header is omitted.
+
+The home page is the one exception: it has no clean `.md` sibling and is served at
+`/index.md`.
+
+### Project hook: redirects and rewrites
+
+The builder also translates a project's own `redirects` and `rewrites` from
+`vercel.json` into the output config (in addition to `headers`, which it already
+preserved). `source` is treated as a regular expression, matching how this builder
+handles header rules. Add project‑specific rules to your `vercel.json`:
+
+```json
+{
+  "redirects": [
+    { "source": "^/old-page$", "destination": "/docs/setup.md", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "^/llms\\.txt$", "destination": "/llms/index.txt" }
+  ]
+}
+```
+
+See [`examples/vercel.json`](examples/vercel.json) for a complete reference config.

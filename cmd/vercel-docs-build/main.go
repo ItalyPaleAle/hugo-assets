@@ -33,9 +33,30 @@ const (
 )
 
 // vercelJSON models the subset of vercel.json that this builder preserves
-// The project-level vercel.json remains the source of truth for headers
+// The project-level vercel.json is the source of truth for headers, and the hook
+// through which projects add their own redirects and rewrites to the output config
 type vercelJSON struct {
-	Headers []vercelHeader `json:"headers"`
+	Headers   []vercelHeader   `json:"headers"`
+	Redirects []vercelRedirect `json:"redirects"`
+	Rewrites  []vercelRewrite  `json:"rewrites"`
+}
+
+// vercelRedirect models one redirect rule from the consumer project's vercel.json
+// Source is treated as a regex, mirroring how header rules are handled here
+type vercelRedirect struct {
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+	// Permanent selects 308 vs 307 when StatusCode is not given, matching Vercel's semantics
+	Permanent *bool `json:"permanent,omitempty"`
+	// StatusCode overrides Permanent when a project needs a specific redirect status
+	StatusCode int `json:"statusCode,omitempty"`
+}
+
+// vercelRewrite models one rewrite rule from the consumer project's vercel.json
+// Rewrites are applied in the miss phase so real files always win over a rewrite
+type vercelRewrite struct {
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
 }
 
 // vercelHeader models one header rule from the consumer project's vercel.json
@@ -65,6 +86,7 @@ type outputRoute struct {
 	Source   string            `json:"src,omitempty"`
 	Dest     string            `json:"dest,omitempty"`
 	Headers  map[string]string `json:"headers,omitempty"`
+	Status   int               `json:"status,omitempty"`
 	Continue bool              `json:"continue,omitempty"`
 	Handle   string            `json:"handle,omitempty"`
 }
@@ -280,13 +302,50 @@ func nodeRuntime() string {
 	return defaultVercelRuntime
 }
 
-// writeOutputConfig combines consumer headers with shared function routes and static file handling
+// writeOutputConfig assembles the Build Output API config from consumer rules,
+// shared markdown and Plausible routing, and static file handling
 // The resulting config.json is what tells Vercel to use Build Output API mode
 func writeOutputConfig() error {
-	// Preserve project-specific header rules from vercel.json so consumers keep security/cache headers
-	routes, err := routesFromVercelJSON("vercel.json")
+	// Preserve project-specific routing from vercel.json so consumers keep their
+	// security/cache headers and can add their own redirects and rewrites
+	consumer, err := routesFromVercelJSON("vercel.json")
 	if err != nil {
 		return err
+	}
+
+	// Main phase: headers and redirects apply before the filesystem is consulted
+	routes := make([]outputRoute, 0)
+	routes = append(routes, consumer.Headers...)
+	routes = append(routes, consumer.Redirects...)
+
+	// Redirect the physical markdown path to its clean URL so /docs/setup.md is the
+	// single public address. This 308 is terminal, so ugly paths never fall through to
+	// the canonical/rewrite routes below. Home (/index.md) has no clean sibling and is
+	// intentionally not matched: the pattern requires a path segment before /index.md.
+	routes = append(routes, outputRoute{
+		Source:  "^/(.+)/index\\.md$",
+		Status:  308,
+		Headers: map[string]string{"Location": "/$1.md"},
+	})
+
+	// Point markdown responses at their HTML page as the canonical URL so search engines
+	// index the HTML, not the agent-facing markdown. Skipped when no base URL is known so
+	// the builder never emits a broken relative canonical.
+	base := canonicalBase()
+	if base != "" {
+		routes = append(routes,
+			outputRoute{
+				Source:   "^/(.+)\\.md$",
+				Headers:  map[string]string{"Link": fmt.Sprintf("<%s/$1/>; rel=\"canonical\"", base)},
+				Continue: true,
+			},
+			// Home is served at /index.md; this later match overrides the generic Link above
+			outputRoute{
+				Source:   "^/index\\.md$",
+				Headers:  map[string]string{"Link": fmt.Sprintf("<%s/>; rel=\"canonical\"", base)},
+				Continue: true,
+			},
+		)
 	}
 
 	// Add shared Plausible proxy routes before filesystem handling so requests reach the generated functions
@@ -295,6 +354,14 @@ func writeOutputConfig() error {
 		outputRoute{Source: "/pls/api(?:/(.*))?", Dest: "/pls-api"},
 		outputRoute{Handle: "filesystem"},
 	)
+
+	// Miss phase: only reached when no real file matched. Serve the clean markdown URL
+	// from its physical index.md, then let projects' own rewrites take over.
+	routes = append(routes,
+		outputRoute{Handle: "miss"},
+		outputRoute{Source: "^/(.+)\\.md$", Dest: "/$1/index.md"},
+	)
+	routes = append(routes, consumer.Rewrites...)
 
 	// Version 3 is the current Build Output API config version used by Vercel
 	config := outputConfig{
@@ -311,34 +378,45 @@ func writeOutputConfig() error {
 	return nil
 }
 
-// routesFromVercelJSON carries over Vercel header rules when emitting Build Output API config
-// Only headers are translated because rewrites/functions are owned by this shared builder
-func routesFromVercelJSON(path string) ([]outputRoute, error) {
+// consumerRoutes groups the routes translated from a project's vercel.json by the
+// Build Output API phase they belong to (headers and redirects run before the
+// filesystem, rewrites run after a filesystem miss)
+type consumerRoutes struct {
+	Headers   []outputRoute
+	Redirects []outputRoute
+	Rewrites  []outputRoute
+}
+
+// routesFromVercelJSON carries over a project's Vercel header, redirect, and rewrite
+// rules when emitting Build Output API config. Functions and the markdown routing are
+// owned by this shared builder; everything else is the project's to extend.
+func routesFromVercelJSON(path string) (consumerRoutes, error) {
 	// Missing vercel.json is allowed so the builder can work for minimal Hugo docs projects
 	file, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return consumerRoutes{}, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("open %s: %w", path, err)
+		return consumerRoutes{}, fmt.Errorf("open %s: %w", path, err)
 	}
 	defer file.Close()
 
 	// Read the whole config because vercel.json is small and JSON decoding needs all bytes
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", path, err)
+		return consumerRoutes{}, fmt.Errorf("read %s: %w", path, err)
 	}
 
 	// Decode only the fields this builder understands and intentionally ignore the rest
 	var config vercelJSON
 	err = json.Unmarshal(data, &config)
 	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
+		return consumerRoutes{}, fmt.Errorf("parse %s: %w", path, err)
 	}
 
+	var out consumerRoutes
+
 	// Convert each Vercel header rule into a Build Output API route with continue=true
-	routes := make([]outputRoute, 0, len(config.Headers))
 	for _, header := range config.Headers {
 		if header.Source == "" || len(header.Headers) == 0 {
 			// Skip incomplete rules rather than emitting routes that Vercel would reject
@@ -362,14 +440,72 @@ func routesFromVercelJSON(path string) ([]outputRoute, error) {
 		}
 
 		// continue=true lets later function/static routes handle the request after headers are applied
-		routes = append(routes, outputRoute{
+		out.Headers = append(out.Headers, outputRoute{
 			Source:   header.Source,
 			Headers:  headers,
 			Continue: true,
 		})
 	}
 
-	return routes, nil
+	// Convert each redirect into a status route that sets Location, mirroring Vercel semantics
+	for _, redirect := range config.Redirects {
+		if redirect.Source == "" || redirect.Destination == "" {
+			// A redirect without both endpoints cannot be represented as a route
+			continue
+		}
+
+		out.Redirects = append(out.Redirects, outputRoute{
+			Source:  redirect.Source,
+			Status:  redirectStatus(redirect),
+			Headers: map[string]string{"Location": redirect.Destination},
+		})
+	}
+
+	// Convert each rewrite into a dest route; the caller emits these in the miss phase
+	for _, rewrite := range config.Rewrites {
+		if rewrite.Source == "" || rewrite.Destination == "" {
+			// A rewrite without both endpoints cannot be represented as a route
+			continue
+		}
+
+		out.Rewrites = append(out.Rewrites, outputRoute{
+			Source: rewrite.Source,
+			Dest:   rewrite.Destination,
+		})
+	}
+
+	return out, nil
+}
+
+// redirectStatus resolves a vercel.json redirect to an HTTP status code, matching
+// Vercel's defaults: an explicit StatusCode wins, then Permanent selects 308 vs 307.
+func redirectStatus(redirect vercelRedirect) int {
+	if redirect.StatusCode != 0 {
+		return redirect.StatusCode
+	}
+	if redirect.Permanent != nil && *redirect.Permanent {
+		return 308
+	}
+
+	return 307
+}
+
+// canonicalBase returns the absolute site origin used for markdown canonical links,
+// or "" when none is configured so the builder can skip canonical headers entirely.
+func canonicalBase() string {
+	// An explicit override wins so projects can pin a canonical host
+	base := os.Getenv("DOCS_CANONICAL_BASE")
+	if base != "" {
+		return strings.TrimRight(base, "/")
+	}
+
+	// VERCEL_PROJECT_PRODUCTION_URL is the production host (no scheme) Vercel injects at build time
+	host := os.Getenv("VERCEL_PROJECT_PRODUCTION_URL")
+	if host != "" {
+		return "https://" + strings.TrimRight(host, "/")
+	}
+
+	return ""
 }
 
 // writeJSON writes stable, human-readable JSON for generated Vercel output files

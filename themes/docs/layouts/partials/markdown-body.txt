@@ -7,7 +7,8 @@
   clean markdown blockquotes.
 
   Link rewriting: root-relative internal links (those starting with "/") are
-  pointed at their markdown twin, e.g. "](/docs/other/)" -> "](/docs/other/index.md)".
+  pointed at their clean markdown twin, e.g. "](/docs/other/)" -> "](/docs/other.md)".
+  On Vercel that clean URL is served from the physical /docs/other/index.md.
   This is a best-effort heuristic on the raw markdown text:
     - external links (http://, https://, mailto:, tel:) start with a scheme, not "/", so are left alone;
     - pure "#anchor" links are left alone;
@@ -18,7 +19,7 @@
 */ -}}
 {{- $c := .RenderShortcodes -}}
 {{- /* Paths with at least one segment: "](/docs/other)" or "](/docs/other/)" (+ optional #anchor) */ -}}
-{{- $c = $c | replaceRE `\]\((/[^)\s"#.]+?)/?(#[^)\s"]*)?\)` `](${1}/index.md${2})` -}}
-{{- /* Bare root link: "](/)" or "](/#anchor)" */ -}}
+{{- $c = $c | replaceRE `\]\((/[^)\s"#.]+?)/?(#[^)\s"]*)?\)` `](${1}.md${2})` -}}
+{{- /* Bare root link "](/)": home has no clean ".md" sibling, so use its real /index.md */ -}}
 {{- $c = $c | replaceRE `\]\(/(#[^)\s"]*)?\)` `](/index.md${1})` -}}
 {{ $c }}

@@ -5,6 +5,6 @@
 {{ with .RawContent }}{{ partial "markdown-body.txt" $ }}
 {{ end -}}
 {{- with .Pages }}
-{{ range $p := . }}- [{{ $p.Title }}]({{ with $p.OutputFormats.Get "markdown" }}{{ .RelPermalink }}{{ else }}{{ $p.RelPermalink }}{{ end }})
+{{ range $p := . }}- [{{ $p.Title }}]({{ with partial "markdown-url.html" $p }}{{ . }}{{ else }}{{ $p.RelPermalink }}{{ end }})
 {{ end -}}
 {{- end -}}
