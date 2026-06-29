@@ -16,10 +16,16 @@ The markdown contains:
   (`[other](/docs/other/)` → `[other](/docs/other.md)`);
 - for section and home pages, a list of child pages linking to their `.md` twins.
 
-Each HTML page advertises its markdown twin in `<head>`:
+Each HTML page advertises its markdown twin both in `<head>` and as an HTTP
+response header (the latter added by the Vercel builder, so clients that only read
+headers can discover it without parsing HTML):
 
 ```html
 <link rel="alternate" type="text/markdown" href="/docs/setup.md" />
+```
+
+```http
+Link: </docs/setup.md>; rel="alternate"; type="text/markdown"
 ```
 
 ### Enabling it in your site
@@ -93,3 +99,44 @@ handles header rules. Add project‑specific rules to your `vercel.json`:
 ```
 
 See [`examples/vercel.json`](examples/vercel.json) for a complete reference config.
+
+## Generating `hugo.toml` from `docs.json`
+
+A docs site's `hugo.toml` is mostly theme‑required boilerplate (markup render hooks,
+the module import, disabled taxonomies) with only a handful of project‑specific
+values. To avoid copying that boilerplate into every project, the builder can
+generate `hugo.toml` from a small `docs.json` metadata file.
+
+If `docs.json` exists in the project root, the builder generates `hugo.toml` from it
+before running Hugo; the generated file can be git‑ignored. If `docs.json` is absent,
+the builder leaves any hand‑written `hugo.toml` untouched, so existing projects keep
+working unchanged.
+
+```json
+{
+  "baseURL": "https://francis.italypaleale.me/",
+  "title": "Francis",
+  "locale": "en-us",
+  "description": "The simple & low-maintenance Go distributed actor framework",
+  "plausibleAnalytics": true,
+  "github": {
+    "url": "https://github.com/ItalyPaleAle/francis",
+    "repo": "https://github.com/ItalyPaleAle/francis",
+    "branch": "main"
+  },
+  "theme": {
+    "scheme": "francis",
+    "iconLight": "icon-light.svg",
+    "iconDark": "icon-dark.svg",
+    "favicon": "icon-light.svg"
+  },
+  "imageMounts": [
+    { "source": "img", "target": "assets/docs/img" }
+  ]
+}
+```
+
+Only `baseURL` and `title` are required; `locale` defaults to `en-us`, and every
+other field is optional. The theme module import, `disableKinds`, the `[markup]`
+configuration, and the empty `[taxonomies]` block are added automatically. See
+[`examples/docs.json`](examples/docs.json) for the reference file.
