@@ -16,5 +16,9 @@
 <link rel="icon" href="{{ . | relURL }}" />
 {{- end }}
 
+{{- range .AlternativeOutputFormats }}
+<link rel="{{ .Rel }}" type="{{ .MediaType.Type }}" href="{{ .Permalink | safeURL }}" />
+{{- end }}
+
 {{- template "_internal/opengraph.html" . }}
 {{- template "_internal/schema.html" . }}
