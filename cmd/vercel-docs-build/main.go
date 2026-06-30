@@ -418,6 +418,12 @@ disableKinds = ["rss"]
 
 # Taxonomy pages aren't needed for a docs site
 [taxonomies]
+
+# Output HTML and Markdown for AI agents
+[outputs]
+  home    = ["html", "markdown"]
+  section = ["html", "markdown"]
+  page    = ["html", "markdown"]
 `))
 
 // writeHugoConfig generates hugo.toml from the project's docs.json when it exists.
