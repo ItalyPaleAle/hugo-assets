@@ -528,7 +528,7 @@ func writeOutputConfig(cfg *projectConfig) error {
 	consumer := consumerRoutesFromConfig(cfg)
 
 	// Assemble the full route list, then write it; assembleRoutes is kept env-free for testing
-	routes, err := assembleRoutes(consumer, canonicalBase())
+	routes, err := assembleRoutes(consumer, canonicalBase(cfg))
 	if err != nil {
 		return err
 	}
@@ -579,18 +579,17 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string) ([]outputRout
 	// index the HTML, not the agent-facing markdown. Skipped when no base URL is known so
 	// the builder never emits a broken relative canonical. Route src is PCRE, so the
 	// generic rule uses a negative lookahead to leave the home page to its own rule below.
-	base := canonicalBase
-	if base != "" {
+	if canonicalBase != "" {
 		routes = append(routes,
 			outputRoute{
 				Source:   "^/(?!index\\.md$)(.+)\\.md$",
-				Headers:  map[string]string{"Link": fmt.Sprintf("<%s/$1/>; rel=\"canonical\"", base)},
+				Headers:  map[string]string{"Link": fmt.Sprintf("<%s/$1/>; rel=\"canonical\"", canonicalBase)},
 				Continue: true,
 			},
 			// Home has no clean ".md" sibling and is served at /index.md
 			outputRoute{
 				Source:   "^/index\\.md$",
-				Headers:  map[string]string{"Link": fmt.Sprintf("<%s/>; rel=\"canonical\"", base)},
+				Headers:  map[string]string{"Link": fmt.Sprintf("<%s/>; rel=\"canonical\"", canonicalBase)},
 				Continue: true,
 			},
 		)
@@ -755,17 +754,18 @@ func redirectStatus(redirect vercelRedirect) int {
 
 // canonicalBase returns the absolute site origin used for markdown canonical links,
 // or "" when none is configured so the builder can skip canonical headers entirely.
-func canonicalBase() string {
+// The origin is the site's baseURL from config.json; DOCS_CANONICAL_BASE overrides it
+// when a project needs to pin a different canonical host.
+func canonicalBase(cfg *projectConfig) string {
 	// An explicit override wins so projects can pin a canonical host
 	base := os.Getenv("DOCS_CANONICAL_BASE")
 	if base != "" {
 		return strings.TrimRight(base, "/")
 	}
 
-	// VERCEL_PROJECT_PRODUCTION_URL is the production host (no scheme) Vercel injects at build time
-	host := os.Getenv("VERCEL_PROJECT_PRODUCTION_URL")
-	if host != "" {
-		return "https://" + strings.TrimRight(host, "/")
+	// Otherwise the site's own baseURL from config.json is the canonical origin
+	if cfg != nil && cfg.BaseURL != "" {
+		return strings.TrimRight(cfg.BaseURL, "/")
 	}
 
 	return ""

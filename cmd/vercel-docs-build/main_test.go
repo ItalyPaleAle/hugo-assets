@@ -111,6 +111,28 @@ func TestAssembleRoutesSiteOverridesDefault(t *testing.T) {
 	}
 }
 
+// TestCanonicalBase confirms the canonical origin is derived from config.json's baseURL,
+// that DOCS_CANONICAL_BASE overrides it, and that an absent baseURL yields no canonical.
+func TestCanonicalBase(t *testing.T) {
+	// baseURL from config.json is the canonical origin, with the trailing slash trimmed
+	t.Setenv("DOCS_CANONICAL_BASE", "")
+	if got := canonicalBase(&projectConfig{BaseURL: "https://francis.italypaleale.me/"}); got != "https://francis.italypaleale.me" {
+		t.Errorf("baseURL canonical = %q, want %q", got, "https://francis.italypaleale.me")
+	}
+
+	// An explicit DOCS_CANONICAL_BASE override wins over config.json's baseURL
+	t.Setenv("DOCS_CANONICAL_BASE", "https://override.example/")
+	if got := canonicalBase(&projectConfig{BaseURL: "https://francis.italypaleale.me/"}); got != "https://override.example" {
+		t.Errorf("override canonical = %q, want %q", got, "https://override.example")
+	}
+
+	// With neither source set, no canonical origin is known
+	t.Setenv("DOCS_CANONICAL_BASE", "")
+	if got := canonicalBase(nil); got != "" {
+		t.Errorf("missing canonical = %q, want empty", got)
+	}
+}
+
 // TestManagedVercelJSON confirms the builder-managed vercel.json is valid JSON and pins the
 // fixed project/build settings every docs site shares.
 func TestManagedVercelJSON(t *testing.T) {

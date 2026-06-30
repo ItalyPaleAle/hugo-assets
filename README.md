@@ -73,8 +73,8 @@ that turns the physical `/<page>/index.md` files into clean URLs:
   to `/docs/setup.md`, so the clean URL is the single public address.
 - **Canonical** — markdown responses carry a `Link: <…>; rel="canonical"` header
   pointing at the HTML page, so search engines index the HTML, not the markdown.
-  The canonical origin comes from `VERCEL_PROJECT_PRODUCTION_URL` (set automatically
-  by Vercel) or the `DOCS_CANONICAL_BASE` override; if neither is set the canonical
+  The canonical origin comes from `baseURL` in `config.json`, or the
+  `DOCS_CANONICAL_BASE` environment override; if neither is set the canonical
   header is omitted.
 
 The home page is the one exception: it has no clean `.md` sibling and is served at
