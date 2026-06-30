@@ -596,6 +596,9 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string) ([]outputRout
 		)
 	}
 
+	// Add rewrites
+	routes = append(routes, consumer.Rewrites...)
+
 	// Add shared Plausible proxy routes before filesystem handling so requests reach the generated functions
 	routes = append(routes,
 		outputRoute{Source: "/pls/index(?:\\.[a-fA-F0-9]{1,6})?\\.js", Dest: "/pls-script"},
@@ -618,16 +621,16 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string) ([]outputRout
 			Headers:  map[string]string{"Link": "</$1.md>" + mdAlternate},
 			Continue: true,
 		},
-		outputRoute{Handle: "filesystem"},
 	)
 
-	// Miss phase: only reached when no real file matched. Serve the clean markdown URL
-	// from its physical index.md, then let projects' own rewrites take over.
 	routes = append(routes,
-		outputRoute{Handle: "miss"},
+		// Serve the clean markdown URL from its physical index.md, then let projects' own rewrites take over.
 		outputRoute{Source: "^/(.+)\\.md$", Dest: "/$1/index.md"},
+		// Handle from the filesystem
+		outputRoute{Handle: "filesystem"},
+		// Miss phase: only reached when no real file matched.
+		outputRoute{Handle: "miss"},
 	)
-	routes = append(routes, consumer.Rewrites...)
 
 	return routes, nil
 }
