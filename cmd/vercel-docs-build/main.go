@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -26,6 +25,15 @@ import (
 //go:embed functions/pls-api/*.js functions/pls-script/*.js
 var functionFiles embed.FS
 
+// managedVercelJSON is the single source of truth for the builder-managed vercel.json
+// It carries both the fixed project/build settings (fluid, buildCommand, devCommand, cleanUrls,
+// framework) and the default header rules. The builder writes it verbatim to the project root
+// (the settings are what Vercel reads) and parses its "headers" into Build Output API routes
+// (which is how the defaults actually apply at runtime)
+//
+//go:embed vercel.json
+var managedVercelJSON []byte
+
 const (
 	// Default runtime on Vercel
 	defaultVercelRuntime = "nodejs24.x"
@@ -33,24 +41,18 @@ const (
 	outputDir = ".vercel/output"
 	staticDir = ".vercel/output/static"
 
-	// docsMetadataFile is the optional project metadata the builder turns into hugo.toml
-	docsMetadataFile = "docs.json"
-	// hugoConfigFile is generated from docsMetadataFile when present, then read by Hugo
+	// projectConfigFile is the optional consumer-authored config the builder reads
+	// It supplies hugo.toml metadata plus optional custom headers/redirects/rewrites
+	projectConfigFile = "config.json"
+	// vercelConfigFile is the builder-managed file written to the project root from managedVercelJSON
+	vercelConfigFile = "vercel.json"
+	// hugoConfigFile is generated from projectConfigFile when present, then read by Hugo
 	hugoConfigFile = "hugo.toml"
 	// themeImportPath is the Hugo module every generated config imports
 	themeImportPath = "github.com/italypaleale/hugo-assets"
 )
 
-// vercelJSON models the subset of vercel.json that this builder preserves
-// The project-level vercel.json is the source of truth for headers, and the hook
-// through which projects add their own redirects and rewrites to the output config
-type vercelJSON struct {
-	Headers   []vercelHeader   `json:"headers"`
-	Redirects []vercelRedirect `json:"redirects"`
-	Rewrites  []vercelRewrite  `json:"rewrites"`
-}
-
-// vercelRedirect models one redirect rule from the consumer project's vercel.json
+// vercelRedirect models one redirect rule a project adds in its config.json
 // Source is treated as a regex, mirroring how header rules are handled here
 type vercelRedirect struct {
 	Source      string `json:"source"`
@@ -61,21 +63,21 @@ type vercelRedirect struct {
 	StatusCode int `json:"statusCode,omitempty"`
 }
 
-// vercelRewrite models one rewrite rule from the consumer project's vercel.json
+// vercelRewrite models one rewrite rule a project adds in its config.json
 // Rewrites are applied in the miss phase so real files always win over a rewrite
 type vercelRewrite struct {
 	Source      string `json:"source"`
 	Destination string `json:"destination"`
 }
 
-// vercelHeader models one header rule from the consumer project's vercel.json
-// The builder translates these rules into Build Output API routes
+// vercelHeader models one header rule, using Vercel's vercel.json "headers" shape
+// It is shared by the embedded default headers and a project's custom headers in config.json
 type vercelHeader struct {
 	Source  string              `json:"source"`
 	Headers []vercelHeaderValue `json:"headers"`
 }
 
-// vercelHeaderValue models a single HTTP header key/value pair from vercel.json
+// vercelHeaderValue models a single HTTP header key/value pair
 // Keeping the shape separate mirrors Vercel's config format and avoids ad hoc JSON parsing
 type vercelHeaderValue struct {
 	Key   string `json:"key"`
@@ -127,8 +129,20 @@ func run() error {
 		return err
 	}
 
+	// Parse the consumer's config.json once; nil when absent (project manages its own hugo.toml)
+	cfg, err := loadProjectConfig()
+	if err != nil {
+		return err
+	}
+
+	// Write the builder-managed vercel.json so its fixed project settings stay pinned
+	err = writeVercelConfig()
+	if err != nil {
+		return err
+	}
+
 	// Generate hugo.toml from the project's metadata before Hugo reads it, when opted in
-	err = writeHugoConfig()
+	err = writeHugoConfig(cfg)
 	if err != nil {
 		return err
 	}
@@ -171,9 +185,21 @@ func run() error {
 	}
 
 	// Emit the Build Output API config that wires headers, functions, and static files together
-	err = writeOutputConfig()
+	err = writeOutputConfig(cfg)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// writeVercelConfig writes the builder-managed vercel.json to the project root
+// The file is the same for every site, so it is written verbatim from the embedded copy
+// Rewriting it on each build keeps the fixed project settings pinned and reverts hand edits
+func writeVercelConfig() error {
+	err := os.WriteFile(vercelConfigFile, managedVercelJSON, 0o644)
+	if err != nil {
+		return fmt.Errorf("write %s: %w", vercelConfigFile, err)
 	}
 
 	return nil
@@ -317,10 +343,11 @@ func nodeRuntime() string {
 	return defaultVercelRuntime
 }
 
-// docsMetadata is the project-supplied input the builder turns into hugo.toml
-// Only the values that vary between docs sites live here; the theme-required
-// boilerplate (markup hooks, module import, taxonomies) is added by the template
-type docsMetadata struct {
+// projectConfig is the consumer-authored config.json the builder reads
+// The metadata fields drive hugo.toml (the theme-required boilerplate is added by the
+// template); the optional headers/redirects/rewrites are layered onto the Build Output API
+// config on top of the builder's default headers
+type projectConfig struct {
 	BaseURL            string      `json:"baseURL"`
 	Title              string      `json:"title"`
 	Locale             string      `json:"locale"`
@@ -329,6 +356,11 @@ type docsMetadata struct {
 	GitHub             *docsGitHub `json:"github"`
 	Theme              *docsTheme  `json:"theme"`
 	ImageMounts        []docsMount `json:"imageMounts"`
+
+	// Optional custom routing a project layers on top of the builder's defaults
+	Headers   []vercelHeader   `json:"headers"`
+	Redirects []vercelRedirect `json:"redirects"`
+	Rewrites  []vercelRewrite  `json:"rewrites"`
 }
 
 // docsGitHub holds the repository links surfaced by the theme (edit links, header)
@@ -352,12 +384,12 @@ type docsMount struct {
 	Target string `json:"target"`
 }
 
-// hugoConfigTemplate renders a complete hugo.toml from docsMetadata. The static
+// hugoConfigTemplate renders a complete hugo.toml from projectConfig. The static
 // blocks (disableKinds, markup, the theme import, taxonomies) are required by the
 // theme and are intentionally not configurable per project.
 var hugoConfigTemplate = template.Must(template.New("hugo.toml").
 	Funcs(template.FuncMap{"q": strconv.Quote}).
-	Parse(`# Generated by vercel-docs-build from ` + docsMetadataFile + ` — do not edit by hand.
+	Parse(`# Generated by vercel-docs-build from ` + projectConfigFile + ` — do not edit by hand.
 baseURL = {{ q .BaseURL }}
 locale = {{ q .Locale }}
 title = {{ q .Title }}
@@ -426,48 +458,53 @@ disableKinds = ["rss"]
   page    = ["html", "markdown"]
 `))
 
-// writeHugoConfig generates hugo.toml from the project's docs.json when it exists.
-// Projects opt in by committing docs.json instead of a hand-written hugo.toml; when
-// docs.json is absent the builder leaves any existing hugo.toml untouched.
-func writeHugoConfig() error {
-	// A missing metadata file means the project manages its own hugo.toml
-	file, err := os.Open(docsMetadataFile)
+// loadProjectConfig reads and parses the consumer's config.json
+// It returns nil (no error) when the file is absent, so the project can manage its own hugo.toml
+// and run with only the builder's defaults
+func loadProjectConfig() (*projectConfig, error) {
+	// A missing config file means the project opts out of generation and custom routing
+	data, err := os.ReadFile(projectConfigFile)
 	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", projectConfigFile, err)
+	}
+
+	var cfg projectConfig
+	err = json.Unmarshal(data, &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", projectConfigFile, err)
+	}
+
+	return &cfg, nil
+}
+
+// writeHugoConfig generates hugo.toml from the project's config.json when it exists.
+// Projects opt in by committing config.json instead of a hand-written hugo.toml; when
+// config.json is absent (cfg is nil) the builder leaves any existing hugo.toml untouched.
+func writeHugoConfig(cfg *projectConfig) error {
+	// A missing config file means the project manages its own hugo.toml
+	if cfg == nil {
 		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("open %s: %w", docsMetadataFile, err)
-	}
-	defer file.Close()
-
-	// Decode the small metadata document in full before rendering the config
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", docsMetadataFile, err)
-	}
-
-	var meta docsMetadata
-	err = json.Unmarshal(data, &meta)
-	if err != nil {
-		return fmt.Errorf("parse %s: %w", docsMetadataFile, err)
 	}
 
 	// baseURL and title are the minimum Hugo needs to render a usable site
-	if meta.BaseURL == "" || meta.Title == "" {
-		return fmt.Errorf("%s must set both baseURL and title", docsMetadataFile)
+	if cfg.BaseURL == "" || cfg.Title == "" {
+		return fmt.Errorf("%s must set both baseURL and title", projectConfigFile)
 	}
 
 	// Default the locale so the generated config always has a value, matching prior sites
-	if meta.Locale == "" {
-		meta.Locale = "en-us"
+	if cfg.Locale == "" {
+		cfg.Locale = "en-us"
 	}
 
 	// Render through a buffer so a template error never leaves a half-written hugo.toml
 	var buf bytes.Buffer
-	err = hugoConfigTemplate.Execute(&buf, struct {
-		docsMetadata
+	err := hugoConfigTemplate.Execute(&buf, struct {
+		projectConfig
 		ThemeImportPath string
-	}{docsMetadata: meta, ThemeImportPath: themeImportPath})
+	}{projectConfig: *cfg, ThemeImportPath: themeImportPath})
 	if err != nil {
 		return fmt.Errorf("render %s: %w", hugoConfigFile, err)
 	}
@@ -477,24 +514,54 @@ func writeHugoConfig() error {
 		return fmt.Errorf("write %s: %w", hugoConfigFile, err)
 	}
 
-	fmt.Fprintf(os.Stdout, "vercel-docs-build: generated %s from %s\n", hugoConfigFile, docsMetadataFile)
+	fmt.Fprintf(os.Stdout, "vercel-docs-build: generated %s from %s\n", hugoConfigFile, projectConfigFile)
 
 	return nil
 }
 
-// writeOutputConfig assembles the Build Output API config from consumer rules,
-// shared markdown and Plausible routing, and static file handling
+// writeOutputConfig assembles the Build Output API config from the baked-in default
+// headers, consumer rules, and the shared markdown/Plausible routing and static handling
 // The resulting config.json is what tells Vercel to use Build Output API mode
-func writeOutputConfig() error {
-	// Preserve project-specific routing from vercel.json so consumers keep their
-	// security/cache headers and can add their own redirects and rewrites
-	consumer, err := routesFromVercelJSON("vercel.json")
+func writeOutputConfig(cfg *projectConfig) error {
+	// Translate the project's own config.json routing so consumers can add their own
+	// headers, redirects, and rewrites on top of the builder's baked-in defaults
+	consumer := consumerRoutesFromConfig(cfg)
+
+	// Assemble the full route list, then write it; assembleRoutes is kept env-free for testing
+	routes, err := assembleRoutes(consumer, canonicalBase())
 	if err != nil {
 		return err
 	}
 
+	// Version 3 is the current Build Output API config version used by Vercel
+	config := outputConfig{
+		Version: 3,
+		Routes:  routes,
+	}
+
+	// Write .vercel/output/config.json after all route inputs have been assembled
+	err = writeJSON(filepath.Join(outputDir, "config.json"), config)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// assembleRoutes builds the ordered Build Output API route list from the builder's default
+// header rules, the consumer's translated rules, and the shared markdown/Plausible/static routing
+// canonicalBase is passed in (rather than read from the environment) so this stays a pure function
+func assembleRoutes(consumer consumerRoutes, canonicalBase string) ([]outputRoute, error) {
+	// The baked-in security/cache headers apply to every site unless a consumer overrides them
+	defaults, err := defaultHeaderRoutes()
+	if err != nil {
+		return nil, err
+	}
+
 	// Main phase: headers and redirects apply before the filesystem is consulted
+	// Defaults come first so a consumer's matching header (emitted next) overrides them by key
 	routes := make([]outputRoute, 0)
+	routes = append(routes, defaults...)
 	routes = append(routes, consumer.Headers...)
 	routes = append(routes, consumer.Redirects...)
 
@@ -512,7 +579,7 @@ func writeOutputConfig() error {
 	// index the HTML, not the agent-facing markdown. Skipped when no base URL is known so
 	// the builder never emits a broken relative canonical. Route src is PCRE, so the
 	// generic rule uses a negative lookahead to leave the home page to its own rule below.
-	base := canonicalBase()
+	base := canonicalBase
 	if base != "" {
 		routes = append(routes,
 			outputRoute{
@@ -562,22 +629,10 @@ func writeOutputConfig() error {
 	)
 	routes = append(routes, consumer.Rewrites...)
 
-	// Version 3 is the current Build Output API config version used by Vercel
-	config := outputConfig{
-		Version: 3,
-		Routes:  routes,
-	}
-
-	// Write .vercel/output/config.json after all route inputs have been assembled
-	err = writeJSON(filepath.Join(outputDir, "config.json"), config)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return routes, nil
 }
 
-// consumerRoutes groups the routes translated from a project's vercel.json by the
+// consumerRoutes groups the routes translated from a project's config.json by the
 // Build Output API phase they belong to (headers and redirects run before the
 // filesystem, rewrites run after a filesystem miss)
 type consumerRoutes struct {
@@ -586,68 +641,74 @@ type consumerRoutes struct {
 	Rewrites  []outputRoute
 }
 
-// routesFromVercelJSON carries over a project's Vercel header, redirect, and rewrite
-// rules when emitting Build Output API config. Functions and the markdown routing are
-// owned by this shared builder; everything else is the project's to extend.
-func routesFromVercelJSON(path string) (consumerRoutes, error) {
-	// Missing vercel.json is allowed so the builder can work for minimal Hugo docs projects
-	file, err := os.Open(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return consumerRoutes{}, nil
+// defaultHeaderRoutes returns the builder's baked-in header rules as Build Output API routes
+// These apply to every site; the embedded managed vercel.json is the single source of truth,
+// and only its "headers" are read here (the project settings are consumed by Vercel directly)
+func defaultHeaderRoutes() ([]outputRoute, error) {
+	var embedded struct {
+		Headers []vercelHeader `json:"headers"`
 	}
+	err := json.Unmarshal(managedVercelJSON, &embedded)
 	if err != nil {
-		return consumerRoutes{}, fmt.Errorf("open %s: %w", path, err)
-	}
-	defer file.Close()
-
-	// Read the whole config because vercel.json is small and JSON decoding needs all bytes
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return consumerRoutes{}, fmt.Errorf("read %s: %w", path, err)
+		return nil, fmt.Errorf("parse embedded %s: %w", vercelConfigFile, err)
 	}
 
-	// Decode only the fields this builder understands and intentionally ignore the rest
-	var config vercelJSON
-	err = json.Unmarshal(data, &config)
-	if err != nil {
-		return consumerRoutes{}, fmt.Errorf("parse %s: %w", path, err)
-	}
+	return headerRoutes(embedded.Headers), nil
+}
 
-	var out consumerRoutes
-
-	// Convert each Vercel header rule into a Build Output API route with continue=true
-	for _, header := range config.Headers {
+// headerRoutes converts vercel.json-style header rules into Build Output API routes
+// continue=true lets later routes (consumer overrides, then the builder's markdown/static
+// routing) run after these headers are applied; incomplete rules are skipped so Vercel
+// never receives a route that sets no headers
+func headerRoutes(headers []vercelHeader) []outputRoute {
+	routes := make([]outputRoute, 0, len(headers))
+	for _, header := range headers {
 		if header.Source == "" || len(header.Headers) == 0 {
 			// Skip incomplete rules rather than emitting routes that Vercel would reject
 			continue
 		}
 
 		// Convert Vercel's list format into the Build Output API header map format
-		headers := make(map[string]string, len(header.Headers))
+		values := make(map[string]string, len(header.Headers))
 		for _, value := range header.Headers {
 			if value.Key == "" {
 				// A header without a key cannot be represented in Vercel output config
 				continue
 			}
 
-			headers[value.Key] = value.Value
+			values[value.Key] = value.Value
 		}
 
-		if len(headers) == 0 {
+		if len(values) == 0 {
 			// Avoid emitting a route that does not actually set any headers
 			continue
 		}
 
-		// continue=true lets later function/static routes handle the request after headers are applied
-		out.Headers = append(out.Headers, outputRoute{
+		routes = append(routes, outputRoute{
 			Source:   header.Source,
-			Headers:  headers,
+			Headers:  values,
 			Continue: true,
 		})
 	}
 
+	return routes
+}
+
+// consumerRoutesFromConfig translates a project's config.json header, redirect, and rewrite
+// rules into Build Output API routes. Functions and the markdown routing are owned by this
+// shared builder; everything else is the project's to extend. A nil config yields no routes.
+func consumerRoutesFromConfig(cfg *projectConfig) consumerRoutes {
+	if cfg == nil {
+		return consumerRoutes{}
+	}
+
+	var out consumerRoutes
+
+	// Translate the consumer's header rules through the shared converter
+	out.Headers = headerRoutes(cfg.Headers)
+
 	// Convert each redirect into a status route that sets Location, mirroring Vercel semantics
-	for _, redirect := range config.Redirects {
+	for _, redirect := range cfg.Redirects {
 		if redirect.Source == "" || redirect.Destination == "" {
 			// A redirect without both endpoints cannot be represented as a route
 			continue
@@ -661,7 +722,7 @@ func routesFromVercelJSON(path string) (consumerRoutes, error) {
 	}
 
 	// Convert each rewrite into a dest route; the caller emits these in the miss phase
-	for _, rewrite := range config.Rewrites {
+	for _, rewrite := range cfg.Rewrites {
 		if rewrite.Source == "" || rewrite.Destination == "" {
 			// A rewrite without both endpoints cannot be represented as a route
 			continue
@@ -673,10 +734,10 @@ func routesFromVercelJSON(path string) (consumerRoutes, error) {
 		})
 	}
 
-	return out, nil
+	return out
 }
 
-// redirectStatus resolves a vercel.json redirect to an HTTP status code, matching
+// redirectStatus resolves a config.json redirect to an HTTP status code, matching
 // Vercel's defaults: an explicit StatusCode wins, then Permanent selects 308 vs 307.
 func redirectStatus(redirect vercelRedirect) int {
 	if redirect.StatusCode != 0 {

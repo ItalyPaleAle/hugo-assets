@@ -17,5 +17,13 @@
   },
   "imageMounts": [
     { "source": "img", "target": "assets/docs/img" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*?)",
+      "headers": [
+        { "key": "Foo", "value": "Bar" }
+      ]
+    }
   ]
 }

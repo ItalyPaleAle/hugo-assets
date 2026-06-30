@@ -80,15 +80,38 @@ that turns the physical `/<page>/index.md` files into clean URLs:
 The home page is the one exception: it has no clean `.md` sibling and is served at
 `/index.md`.
 
-### Project hook: redirects and rewrites
+### Default headers
 
-The builder also translates a project's own `redirects` and `rewrites` from
-`vercel.json` into the output config (in addition to `headers`, which it already
-preserved). `source` is treated as a regular expression, matching how this builder
-handles header rules. Add project‑specific rules to your `vercel.json`:
+The builder bakes in a set of security and cache headers that apply to every site:
+
+- `Permissions-Policy: interest-cohort=()` and `Referrer-Policy: strict-origin-when-cross-origin`
+  on all responses;
+- a strict `Content-Security-Policy` and `X-Frame-Options: SAMEORIGIN` on HTML pages;
+- long‑lived `Cache-Control` on `/img`, `/fonts`, `*.svg|png`, and `/js`+`/css` assets.
+
+These defaults live in the builder-managed
+[`cmd/vercel-docs-build/vercel.json`](cmd/vercel-docs-build/vercel.json), which is the single
+source of truth (see [Builder-managed `vercel.json`](#builder-managed-verceljson)).
+
+### Project hook: extra headers, redirects, and rewrites
+
+Custom routing goes in **your project's `config.json`** (see
+[Generating `hugo.toml` from `config.json`](#generating-hugotoml-from-configjson)), not in
+`vercel.json`, which the builder owns. Add your own `headers`, `redirects`, and `rewrites`;
+`source` is treated as a regular expression. They are layered *on top of* the defaults, so
+repeating a default header key overrides its value (e.g. to tighten the CSP or change a cache
+time).
 
 ```json
 {
+  "headers": [
+    {
+      "source": "/(.*?)",
+      "headers": [
+        { "key": "Foo", "value": "Bar" }
+      ]
+    }
+  ],
   "redirects": [
     { "source": "^/old-page$", "destination": "/docs/setup.md", "permanent": true }
   ],
@@ -98,17 +121,32 @@ handles header rules. Add project‑specific rules to your `vercel.json`:
 }
 ```
 
-See [`examples/vercel.json`](examples/vercel.json) for a complete reference config.
+### Builder-managed `vercel.json`
 
-## Generating `hugo.toml` from `docs.json`
+The builder owns `vercel.json` and writes it to the project root on every build from its
+embedded [`cmd/vercel-docs-build/vercel.json`](cmd/vercel-docs-build/vercel.json). It pins the
+project/build settings every docs site shares — `fluid`, `buildCommand`, `devCommand`,
+`cleanUrls`, `framework` — plus the default headers above. These cannot be overridden per
+project: hand edits are reverted on the next build.
+
+Because Vercel reads `vercel.json` *before* the build runs, the generated file must be
+**committed** (unlike `hugo.toml`, which can be git‑ignored). Do not edit it by hand — put
+custom routing in `config.json` instead.
+
+## Generating `hugo.toml` from `config.json`
+
+`config.json` is the single file a project authors. It supplies the site metadata the
+builder turns into `hugo.toml`, plus the optional `headers`/`redirects`/`rewrites` covered in
+[Project hook](#project-hook-extra-headers-redirects-and-rewrites). (Not to be confused with
+the generated Build Output API `.vercel/output/config.json`.)
 
 A docs site's `hugo.toml` is mostly theme‑required boilerplate (markup render hooks,
 the module import, disabled taxonomies) with only a handful of project‑specific
-values. To avoid copying that boilerplate into every project, the builder can
-generate `hugo.toml` from a small `docs.json` metadata file.
+values. To avoid copying that boilerplate into every project, the builder generates
+`hugo.toml` from `config.json`.
 
-If `docs.json` exists in the project root, the builder generates `hugo.toml` from it
-before running Hugo; the generated file can be git‑ignored. If `docs.json` is absent,
+If `config.json` exists in the project root, the builder generates `hugo.toml` from it
+before running Hugo; the generated `hugo.toml` can be git‑ignored. If `config.json` is absent,
 the builder leaves any hand‑written `hugo.toml` untouched, so existing projects keep
 working unchanged.
 
@@ -139,4 +177,4 @@ working unchanged.
 Only `baseURL` and `title` are required; `locale` defaults to `en-us`, and every
 other field is optional. The theme module import, `disableKinds`, the `[markup]`
 configuration, and the empty `[taxonomies]` block are added automatically. See
-[`examples/docs.json`](examples/docs.json) for the reference file.
+[`examples/config.json`](examples/config.json) for the reference file.
