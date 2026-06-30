@@ -1,0 +1,25 @@
+{{- /*
+  markdown-body.html — renders a page's body as markdown for the "markdown"
+  output format (the agent-friendly .md twin of each HTML page).
+
+  Source: .RenderShortcodes expands shortcodes (callout, tabs, figure, mermaid)
+  while leaving markdown as markdown, so GitHub-style [!NOTE] alerts stay as
+  clean markdown blockquotes.
+
+  Link rewriting: root-relative internal links (those starting with "/") are
+  pointed at their clean markdown twin, e.g. "](/docs/other/)" -> "](/docs/other.md)".
+  On Vercel that clean URL is served from the physical /docs/other/index.md.
+  This is a best-effort heuristic on the raw markdown text:
+    - external links (http://, https://, mailto:, tel:) start with a scheme, not "/", so are left alone;
+    - pure "#anchor" links are left alone;
+    - any target containing a "." is left alone, which skips assets (/img/x.png),
+      existing .md links, and protocol-relative (//cdn.example.com) links;
+    - relative links (other/, ../other/) are not rewritten — author root-relative
+      links if you want them rewritten.
+*/ -}}
+{{- $c := .RenderShortcodes -}}
+{{- /* Paths with at least one segment: "](/docs/other)" or "](/docs/other/)" (+ optional #anchor) */ -}}
+{{- $c = $c | replaceRE `\]\((/[^)\s"#.]+?)/?(#[^)\s"]*)?\)` `](${1}.md${2})` -}}
+{{- /* Bare root link "](/)": home has no clean ".md" sibling, so use its real /index.md */ -}}
+{{- $c = $c | replaceRE `\]\(/(#[^)\s"]*)?\)` `](/index.md${1})` -}}
+{{ $c }}

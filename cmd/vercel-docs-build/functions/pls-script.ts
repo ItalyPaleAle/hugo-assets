@@ -19,7 +19,7 @@ export default {
 
     if (!upstreamUrl) {
       return new Response('', {
-        status: 204,
+        status: 200,
         headers: {
           'cache-control': 'no-cache',
         },

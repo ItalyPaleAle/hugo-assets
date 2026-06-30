@@ -10,3 +10,23 @@
   [[module.mounts]]
     source = "themes/docs/static"
     target = "static"
+
+# Markdown ("agent-friendly") output. The mediaType and outputFormat below are
+# inherited by sites that use this theme (Hugo merges these with a "shallow"
+# strategy). The [outputs] block is NOT inherited (Hugo merges "outputs" with a
+# "none" strategy), so consuming sites must add their own copy — see the README.
+[mediaTypes]
+  [mediaTypes."text/markdown"]
+    suffixes = ["md"]
+
+[outputFormats]
+  [outputFormats.markdown]
+    mediaType = "text/markdown"
+    isPlainText = true
+    isHTML = false
+    # rel defaults to "alternate" — used for the <link rel="alternate"> tag.
+
+[outputs]
+  home    = ["html", "markdown"]
+  section = ["html", "markdown"]
+  page    = ["html", "markdown"]

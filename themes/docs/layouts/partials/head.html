@@ -16,5 +16,9 @@
 <link rel="icon" href="{{ . | relURL }}" />
 {{- end }}
 
+{{- with .OutputFormats.Get "markdown" }}
+<link rel="alternate" type="{{ .MediaType.Type }}" href="{{ partial "markdown-url.html" $ | safeURL }}" />
+{{- end }}
+
 {{- template "_internal/opengraph.html" . }}
 {{- template "_internal/schema.html" . }}
