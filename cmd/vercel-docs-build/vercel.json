@@ -4,6 +4,7 @@
     "buildCommand": "sh build.sh",
     "devCommand": "npm run dev -- -p $PORT",
     "cleanUrls": false,
+    "trailingSlash": true,
     "framework": null,
     "headers": [
         {
