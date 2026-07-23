@@ -142,7 +142,7 @@ func TestManagedVercelJSON(t *testing.T) {
 		t.Fatalf("embedded %s is not valid JSON: %v", vercelConfigFile, err)
 	}
 
-	for _, key := range []string{"fluid", "buildCommand", "devCommand", "cleanUrls", "framework"} {
+	for _, key := range []string{"fluid", "buildCommand", "devCommand", "cleanUrls", "trailingSlash", "framework"} {
 		if _, ok := parsed[key]; !ok {
 			t.Errorf("managed %s missing fixed setting %q", vercelConfigFile, key)
 		}

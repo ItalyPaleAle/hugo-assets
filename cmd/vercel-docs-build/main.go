@@ -27,7 +27,7 @@ var functionFiles embed.FS
 
 // managedVercelJSON is the single source of truth for the builder-managed vercel.json
 // It carries both the fixed project/build settings (fluid, buildCommand, devCommand, cleanUrls,
-// framework) and the default header rules. The builder writes it verbatim to the project root
+// trailingSlash, framework) and the default header rules. The builder writes it verbatim to the project root
 // (the settings are what Vercel reads) and parses its "headers" into Build Output API routes
 // (which is how the defaults actually apply at runtime)
 //

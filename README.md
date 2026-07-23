@@ -126,7 +126,7 @@ time).
 The builder owns `vercel.json` and writes it to the project root on every build from its
 embedded [`cmd/vercel-docs-build/vercel.json`](cmd/vercel-docs-build/vercel.json). It pins the
 project/build settings every docs site shares — `fluid`, `buildCommand`, `devCommand`,
-`cleanUrls`, `framework` — plus the default headers above. These cannot be overridden per
+`cleanUrls`, `trailingSlash`, `framework` — plus the default headers above. These cannot be overridden per
 project: hand edits are reverted on the next build.
 
 Because Vercel reads `vercel.json` *before* the build runs, the generated file must be
