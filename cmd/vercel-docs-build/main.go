@@ -355,6 +355,7 @@ type projectConfig struct {
 	PlausibleAnalytics bool        `json:"plausibleAnalytics"`
 	GitHub             *docsGitHub `json:"github"`
 	Theme              *docsTheme  `json:"theme"`
+	Robots             *docsRobots `json:"robots"`
 	ImageMounts        []docsMount `json:"imageMounts"`
 
 	// Optional custom routing a project layers on top of the builder's defaults
@@ -378,6 +379,12 @@ type docsTheme struct {
 	Favicon   string `json:"favicon"`
 }
 
+// docsRobots controls the generated robots.txt and optional llms.txt discovery document
+type docsRobots struct {
+	Disallow []string `json:"disallow"`
+	LLMSTXT  bool     `json:"llmsTXT"`
+}
+
 // docsMount mirrors one Hugo module mount, used to expose a project's image directory
 type docsMount struct {
 	Source string `json:"source"`
@@ -394,8 +401,13 @@ baseURL = {{ q .BaseURL }}
 locale = {{ q .Locale }}
 title = {{ q .Title }}
 disableKinds = ["rss"]
+enableRobotsTXT = true
 
 [module]
+  [module.hugoVersion]
+    extended = true
+    min = '0.164.0'
+
 {{- range .ImageMounts }}
   [[module.mounts]]
     source = {{ q .Source }}
@@ -432,6 +444,18 @@ disableKinds = ["rss"]
 {{- end }}
 {{- if .PlausibleAnalytics }}
   PlausibleAnalytics = true
+{{- end }}
+{{- with .Robots }}
+
+  [params.robots]
+    llmsTXT = {{ .LLMSTXT }}
+{{- with .Disallow }}
+    disallow = [
+{{- range . }}
+      {{ q . }},
+{{- end }}
+    ]
+{{- end }}
 {{- end }}
 {{- with .Theme }}
 

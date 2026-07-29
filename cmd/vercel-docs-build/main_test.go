@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -181,5 +183,41 @@ func TestConsumerRoutesFromConfigOverride(t *testing.T) {
 	}
 	if got := routes[defaultIdx+1+consumerIdx].Headers["Referrer-Policy"]; got != "no-referrer" {
 		t.Errorf("config.json override value = %q, want %q", got, "no-referrer")
+	}
+}
+
+// TestHugoConfigIncludesRobots confirms config.json enables Hugo's robots output and can opt into the generated llms.txt resource
+func TestHugoConfigIncludesRobots(t *testing.T) {
+	var cfg projectConfig
+	err := json.Unmarshal([]byte(`{
+		"baseURL": "https://example.com/",
+		"title": "Example",
+		"robots": {
+			"disallow": ["/private/"],
+			"llmsTXT": true
+		}
+	}`), &cfg)
+	if err != nil {
+		t.Fatalf("parse project config: %v", err)
+	}
+
+	var out bytes.Buffer
+	err = hugoConfigTemplate.Execute(&out, struct {
+		projectConfig
+		ThemeImportPath string
+	}{projectConfig: cfg, ThemeImportPath: themeImportPath})
+	if err != nil {
+		t.Fatalf("render Hugo config: %v", err)
+	}
+
+	for _, want := range []string{
+		"enableRobotsTXT = true",
+		"[params.robots]",
+		"llmsTXT = true",
+		`"/private/"`,
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("generated Hugo config missing %q:\n%s", want, out.String())
+		}
 	}
 }

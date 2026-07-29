@@ -168,6 +168,10 @@ working unchanged.
     "iconDark": "icon-dark.svg",
     "favicon": "icon-light.svg"
   },
+  "robots": {
+    "llmsTXT": true,
+    "disallow": []
+  },
   "imageMounts": [
     { "source": "img", "target": "assets/docs/img" }
   ]
@@ -175,6 +179,7 @@ working unchanged.
 ```
 
 Only `baseURL` and `title` are required; `locale` defaults to `en-us`, and every
-other field is optional. The theme module import, `disableKinds`, the `[markup]`
-configuration, and the empty `[taxonomies]` block are added automatically. See
+other field is optional. Set `robots.llmsTXT` to publish `/llms.txt`, and use
+`robots.disallow` for additional paths in `/robots.txt`. The theme module import,
+`disableKinds`, the `[markup]` configuration, and the empty `[taxonomies]` block are added automatically. See
 [`examples/config.json`](examples/config.json) for the reference file.

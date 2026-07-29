@@ -1,0 +1,20 @@
+User-agent: *
+Sitemap: {{ "sitemap.xml" | absURL }}
+{{ range where .Pages "Params.sitemap_exclude" "eq" true }}
+Disallow: {{ .RelPermalink }}{{ end }}
+{{ with .Site.Params.robots.disallow }}{{ range . }}
+Disallow: {{ . }}{{ end }}{{ end }}
+
+Disallow: /401.html
+Disallow: /403.html
+Disallow: /404.html
+Disallow: /418.html
+Disallow: /500.html
+Disallow: /502.html
+
+{{/* LLMS */}}
+{{- $llmsTxtTPL := resources.Get "llms.txt.tpl" -}}
+{{- if and $llmsTxtTPL .Site.Params.robots.llmsTXT -}}
+  {{- $llmsTXT := $llmsTxtTPL | resources.ExecuteAsTemplate "llms.txt" . -}}
+  llms-txt: {{ $llmsTXT.Permalink }}
+{{- end }}
