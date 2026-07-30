@@ -221,3 +221,61 @@ func TestHugoConfigIncludesRobots(t *testing.T) {
 		}
 	}
 }
+
+// TestHugoConfigGitHubPath confirms config.json's optional github.path is rendered as
+// github_path, and that it's omitted entirely when not set so edit-link.html falls back
+// to repo-root edit links.
+func TestHugoConfigGitHubPath(t *testing.T) {
+	var withPath projectConfig
+	err := json.Unmarshal([]byte(`{
+		"baseURL": "https://example.com/",
+		"title": "Example",
+		"github": {
+			"url": "https://github.com/example/example",
+			"repo": "https://github.com/example/example",
+			"branch": "main",
+			"path": "docs"
+		}
+	}`), &withPath)
+	if err != nil {
+		t.Fatalf("parse project config: %v", err)
+	}
+
+	var out bytes.Buffer
+	err = hugoConfigTemplate.Execute(&out, struct {
+		projectConfig
+		ThemeImportPath string
+	}{projectConfig: withPath, ThemeImportPath: themeImportPath})
+	if err != nil {
+		t.Fatalf("render Hugo config: %v", err)
+	}
+	if want := `github_path = "docs"`; !strings.Contains(out.String(), want) {
+		t.Errorf("generated Hugo config missing %q:\n%s", want, out.String())
+	}
+
+	var withoutPath projectConfig
+	err = json.Unmarshal([]byte(`{
+		"baseURL": "https://example.com/",
+		"title": "Example",
+		"github": {
+			"url": "https://github.com/example/example",
+			"repo": "https://github.com/example/example",
+			"branch": "main"
+		}
+	}`), &withoutPath)
+	if err != nil {
+		t.Fatalf("parse project config: %v", err)
+	}
+
+	out.Reset()
+	err = hugoConfigTemplate.Execute(&out, struct {
+		projectConfig
+		ThemeImportPath string
+	}{projectConfig: withoutPath, ThemeImportPath: themeImportPath})
+	if err != nil {
+		t.Fatalf("render Hugo config: %v", err)
+	}
+	if strings.Contains(out.String(), "github_path") {
+		t.Errorf("generated Hugo config should omit github_path when unset:\n%s", out.String())
+	}
+}

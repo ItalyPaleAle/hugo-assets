@@ -1,5 +1,9 @@
 {{- with .Site.Params.github_repo }}
 {{- $editPath := $.Params.source_path | default $.File.Path -}}
+{{- $subPath := strings.Trim "/" ($.Site.Params.github_path | default "") -}}
+{{- with $subPath }}
+{{- $editPath = printf "%s/%s" . $editPath -}}
+{{- end }}
 {{- $editBase := printf "%s/edit/%s/" . ($.Site.Params.github_branch | default "main") -}}
 <a href="{{ $editBase }}{{ $editPath }}" class="edit-link" target="_blank" rel="noopener noreferrer">
   <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor"

@@ -369,6 +369,9 @@ type docsGitHub struct {
 	URL    string `json:"url"`
 	Repo   string `json:"repo"`
 	Branch string `json:"branch"`
+	// Path is the optional sub-path inside the repo where the docs content lives (e.g. "docs"),
+	// prepended to each page's edit link when the content isn't at the repo root
+	Path string `json:"path"`
 }
 
 // docsTheme holds the theme's visual options (color scheme and icons)
@@ -441,6 +444,9 @@ enableRobotsTXT = true
   github_url = {{ q .URL }}
   github_repo = {{ q .Repo }}
   github_branch = {{ q .Branch }}
+{{- with .Path }}
+  github_path = {{ q . }}
+{{- end }}
 {{- end }}
 {{- if .PlausibleAnalytics }}
   PlausibleAnalytics = true
