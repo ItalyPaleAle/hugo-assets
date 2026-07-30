@@ -160,7 +160,8 @@ working unchanged.
   "github": {
     "url": "https://github.com/ItalyPaleAle/francis",
     "repo": "https://github.com/ItalyPaleAle/francis",
-    "branch": "main"
+    "branch": "main",
+    "path": "docs"
   },
   "theme": {
     "scheme": "francis",
@@ -179,7 +180,12 @@ working unchanged.
 ```
 
 Only `baseURL` and `title` are required; `locale` defaults to `en-us`, and every
-other field is optional. Set `robots.llmsTXT` to publish `/llms.txt`, and use
-`robots.disallow` for additional paths in `/robots.txt`. The theme module import,
+other field is optional. `github.branch` defaults to `main` if omitted. Set
+`github.path` when the docs content isn't at the repo root (e.g. a project that
+keeps its docs under `/docs`, like
+[traefik-forward-auth](https://github.com/ItalyPaleAle/traefik-forward-auth)) — it's
+prepended to each page's "Edit this page on GitHub" link. Set `robots.llmsTXT` to
+publish `/llms.txt`, and use `robots.disallow` for additional paths in
+`/robots.txt`. The theme module import,
 `disableKinds`, the `[markup]` configuration, and the empty `[taxonomies]` block are added automatically. See
 [`examples/config.json`](examples/config.json) for the reference file.
