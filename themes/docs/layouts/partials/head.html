@@ -10,7 +10,7 @@
 {{- with .Params.description }}<meta name="description" content="{{ . }}" />{{- end }}
 
 <link rel="canonical" href="{{ .Permalink }}" />
-{{- if .Params.sitemap_exclude }}
+{{- if .Sitemap.Disable }}
 <meta name="robots" content="noindex" />
 {{- end }}
 
@@ -31,4 +31,4 @@
 {{- end }}
 
 {{- template "_internal/opengraph.html" . }}
-{{- template "_internal/schema.html" . }}
+{{- partial "schema.html" . }}

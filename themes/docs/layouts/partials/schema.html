@@ -1,0 +1,37 @@
+{{- $siteID := printf "%s#organization" .Site.BaseURL -}}
+
+{{- $org := dict
+  "@type" "Organization"
+  "@id" $siteID
+  "name" .Site.Title
+  "url" .Site.BaseURL
+-}}
+{{- with .Site.Params.theme.icon_light | default .Site.Params.theme.favicon -}}
+  {{- $org = merge $org (dict "logo" (absURL .)) -}}
+{{- end -}}
+{{- with .Site.Params.github_url -}}
+  {{- $org = merge $org (dict "sameAs" (slice .)) -}}
+{{- end -}}
+
+{{- $graph := slice $org -}}
+
+{{- /* Breadcrumbs need at least one ancestor, so the home page is skipped. */ -}}
+{{- if not .IsHome -}}
+  {{- $trail := .Ancestors.Reverse | append . -}}
+  {{- $items := slice -}}
+  {{- range $i, $p := $trail -}}
+    {{- $items = $items | append (dict
+      "@type" "ListItem"
+      "position" (add $i 1)
+      "name" (cond $p.IsHome $p.Site.Title $p.Title)
+      "item" $p.Permalink
+    ) -}}
+  {{- end -}}
+  {{- $graph = $graph | append (dict
+    "@type" "BreadcrumbList"
+    "@id" (printf "%s#breadcrumb" .Permalink)
+    "itemListElement" $items
+  ) -}}
+{{- end -}}
+
+<script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" $graph | jsonify (dict "indent" "  ") | safeJS }}</script>
