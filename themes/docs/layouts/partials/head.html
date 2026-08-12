@@ -9,7 +9,17 @@
 </title>
 {{- with .Params.description }}<meta name="description" content="{{ . }}" />{{- end }}
 
+<link rel="canonical" href="{{ .Permalink }}" />
+{{- if .Params.sitemap_exclude }}
+<meta name="robots" content="noindex" />
+{{- end }}
+
 {{- $scheme := partial "theme-scheme.html" . -}}
+
+<link rel="preload" href="{{ "fonts/geist/Geist-Variable.woff2" | relURL }}" as="font" type="font/woff2" crossorigin />
+{{- if strings.Contains .Content "<code" }}
+<link rel="preload" href="{{ "fonts/geist/GeistMono-Variable.woff2" | relURL }}" as="font" type="font/woff2" crossorigin />
+{{- end }}
 <link rel="stylesheet" href="{{ printf "css/main-%s.css" $scheme | relURL }}" />
 
 {{- with .Site.Params.theme.favicon | default .Site.Params.favicon }}
