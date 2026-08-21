@@ -1,0 +1,15 @@
+{{ define "main" }}
+
+  <h1 class="text-[2.5rem] font-semibold tracking-[-0.0625rem] leading-[1.1] mb-[0.875rem] text-ink">
+    Page not found
+  </h1>
+
+  <p class="page-lead">
+    There's nothing at this address. It may have been moved or renamed.
+  </p>
+
+  <div class="prose">
+    {{- partial "notfound-links.html" . -}}
+  </div>
+
+{{ end }}

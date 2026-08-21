@@ -28,22 +28,29 @@ headers can discover it without parsing HTML):
 Link: </docs/setup.md>; rel="alternate"; type="text/markdown"
 ```
 
+The same markdown is also served from the page's own URL to clients that ask for it
+with an `Accept` header — see
+[Markdown content negotiation](#markdown-content-negotiation-accept-textmarkdown).
+
 ### Enabling it in your site
 
-The theme ships the `text/markdown` media type and the `markdown` output format,
-and they are inherited automatically when you use the theme. However, Hugo does
-**not** merge the `outputs` setting from a theme/module (its merge strategy is
+The theme ships the `text/markdown` media type and the `markdown` and `notfound`
+output formats, and they are inherited automatically when you use the theme. However,
+Hugo does **not** merge the `outputs` setting from a theme/module (its merge strategy is
 `none`), so you must add this block to **your site's** configuration:
 
 ```toml
 [outputs]
-  home    = ["html", "markdown"]
+  home    = ["html", "markdown", "notfound"]
   section = ["html", "markdown"]
   page    = ["html", "markdown"]
 ```
 
 That is the only configuration required. Rebuild and the `.md` files (plus the
-`rel="alternate"` links) will be generated.
+`rel="alternate"` links) will be generated. `notfound` is what publishes the markdown
+404 body at `/404.md`; it hangs off the home page because Hugo renders the 404 page
+kind for the HTML output format only. Sites generated from `config.json` get this
+block automatically.
 
 ### Notes & limitations
 
@@ -132,6 +139,51 @@ project: hand edits are reverted on the next build.
 Because Vercel reads `vercel.json` *before* the build runs, the generated file must be
 **committed** (unlike `hugo.toml`, which can be git‑ignored). Do not edit it by hand — put
 custom routing in `config.json` instead.
+
+## Markdown content negotiation (`Accept: text/markdown`)
+
+The clean `.md` URL is the discoverable address, but an agent shouldn't have to rewrite
+URLs to get markdown. Every page URL also answers with its markdown twin when the
+request asks for it, following the [acceptmarkdown.com](https://acceptmarkdown.com)
+convention:
+
+```console
+$ curl -sI -H 'Accept: text/markdown' https://example.com/docs/setup/ | grep -i '^content-type\|^vary'
+content-type: text/markdown; charset=utf-8
+vary: Accept, Accept-Encoding
+```
+
+- The negotiated response is served from the same physical file as `/docs/setup.md`,
+  so both routes return identical bytes; the URL stays as requested.
+- `Vary: Accept` is set on every page URL — on the HTML variant too — so a CDN or
+  browser cache never hands the markdown to a browser, or the HTML to an agent.
+- Markdown wins only when the client asks for it at full quality. An `Accept` that
+  ranks it below HTML (`text/html, text/markdown;q=0.5`) gets HTML, and a browser's
+  `Accept` never mentions `text/markdown` at all, so pages render normally.
+- Assets (anything with a file extension) and the `/pls/*` analytics endpoints are
+  never negotiated.
+
+## Agent-friendly 404s
+
+A missing path returns a real `404` with a body the client can recover from, rather
+than a bare status:
+
+- Clients that asked for HTML get the theme's rendered 404 page, which links to the
+  site index, the sitemap, `llms.txt` (when enabled), and every section.
+- Everything else — `curl`, `fetch`, an agent, or any request for a `.md` URL — gets
+  the same links as markdown from `/404.md`, published by the theme's `notfound`
+  output format.
+
+```console
+$ curl -s -o /dev/null -w '%{http_code}\n' https://example.com/nope
+404
+```
+
+Both are wired up as fallback routes below the Build Output API's `filesystem` handler,
+so they are reached only once nothing on disk matched — a function's 5xx is never
+reported as a missing page — and only for the representations the build actually
+produced: a site whose layouts render no 404 page keeps Vercel's default 404 instead of
+being routed to a file that doesn't exist.
 
 ## Generating `hugo.toml` from `config.json`
 

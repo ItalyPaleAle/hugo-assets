@@ -2,13 +2,14 @@
   markdown-url.html — returns the clean, root-relative URL of a page's markdown twin.
 
   For a page at /docs/setup/ this returns /docs/setup.md (served on Vercel by a
-  rewrite to the physical /docs/setup/index.md). The home page has no clean ".md"
-  sibling, so it returns its real markdown output URL (/index.md).
+  rewrite to the physical /docs/setup/index.md). Pages that are not published at a
+  pretty URL — the home page, and the 404 page at /404.html — have no clean ".md"
+  sibling, so they return their real markdown output URL (/index.md, /404.md).
 
   Pass a Page. Returns an empty string for pages without a markdown output format.
 */ -}}
 {{- with .OutputFormats.Get "markdown" -}}
-  {{- if $.IsHome -}}
+  {{- if or $.IsHome (not (strings.HasSuffix $.RelPermalink "/")) -}}
     {{- .RelPermalink -}}
   {{- else -}}
     {{- printf "%s.md" (strings.TrimSuffix "/" $.RelPermalink) -}}
