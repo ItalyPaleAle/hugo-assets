@@ -101,9 +101,8 @@ custom routing in `config.json` instead.
 The clean `.md` URL is the discoverable address, but an agent shouldn't have to rewrite URLs to get markdown. Every page URL also answers with its markdown twin when the request asks for it, following the [acceptmarkdown.com](https://acceptmarkdown.com) convention:
 
 ```console
-$ curl -sI -H 'Accept: text/markdown' https://example.com/docs/setup/ | grep -i '^content-type\|^vary'
-content-type: text/markdown; charset=utf-8
-vary: Accept, Accept-Encoding
+$ curl -sI -H 'Accept: text/markdown' https://example.com/docs/setup/ \
+  | grep -i '^content-type\|^vary' content-type: text/markdown; charset=utf-8 vary: Accept, Accept-Encoding
 ```
 
 - The negotiated response is served from the same physical file as `/docs/setup.md`, so both routes return identical bytes; the URL stays as requested.
