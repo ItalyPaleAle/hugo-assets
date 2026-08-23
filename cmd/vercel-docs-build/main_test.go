@@ -512,3 +512,71 @@ func TestHugoConfigPublishesNotFoundMarkdown(t *testing.T) {
 		t.Errorf("generated Hugo config missing %q:\n%s", want, out.String())
 	}
 }
+
+// TestCleanMarkdownURLSourceSkipsRootMarkdownFiles confirms the pattern that turns a clean
+// ".md" URL into its physical "/<page>/index.md" excludes the markdown files that live at
+// the root of the static tree.
+func TestCleanMarkdownURLSourceSkipsRootMarkdownFiles(t *testing.T) {
+	const want = `^/(?!index\.md$)(?!404\.md$)(.+)\.md$`
+	if got := cleanMarkdownURLSource(); got != want {
+		t.Errorf("cleanMarkdownURLSource() = %q, want %q", got, want)
+	}
+}
+
+// TestAssembleRoutesServesRootMarkdownFromDisk confirms /index.md and /404.md reach the
+// filesystem handler untouched. Both are physical files, so the clean-URL rewrite must not
+// send them to /index/index.md and /404/index.md, which do not exist: that 404s the home
+// page's markdown twin at the exact address its rel="alternate" link and Link header give out.
+func TestAssembleRoutesServesRootMarkdownFromDisk(t *testing.T) {
+	routes, err := assembleRoutes(consumerRoutes{}, "https://example.com", siteOutputs{Markdown: true, NotFoundHTML: true, NotFoundMarkdown: true})
+	if err != nil {
+		t.Fatalf("assembleRoutes: %v", err)
+	}
+
+	// The unconditional rewrite of a clean ".md" URL onto its physical file
+	rewriteIdx, rewrite := findRoute(routes, func(route outputRoute) bool {
+		return route.Dest == "/$1/index.md" && len(route.Has) == 0
+	})
+	if rewriteIdx < 0 {
+		t.Fatalf("no clean markdown URL rewrite")
+	}
+	if rewrite.Source != cleanMarkdownURLSource() {
+		t.Errorf("clean markdown URL rewrite src = %q, want %q", rewrite.Source, cleanMarkdownURLSource())
+	}
+
+	fsIdx := indexOfHandle(routes, "filesystem")
+	if fsIdx < 0 {
+		t.Fatalf("expected a filesystem handler route")
+	}
+	if rewriteIdx > fsIdx {
+		t.Errorf("clean markdown URL rewrite (%d) must come before the filesystem handler (%d)", rewriteIdx, fsIdx)
+	}
+
+	// The canonical Link header covers the same set of clean URLs, and /index.md gets its own rule
+	canonicalIdx, canonical := findRoute(routes, func(route outputRoute) bool {
+		return route.Continue && strings.Contains(route.Headers["Link"], `rel="canonical"`) && strings.Contains(route.Source, `(.+)\.md$`)
+	})
+	if canonicalIdx < 0 {
+		t.Fatalf("no canonical Link route for clean markdown URLs")
+	}
+	if canonical.Source != cleanMarkdownURLSource() {
+		t.Errorf("canonical Link route src = %q, want %q", canonical.Source, cleanMarkdownURLSource())
+	}
+
+	homeIdx, home := findRoute(routes, func(route outputRoute) bool {
+		return route.Source == `^/index\.md$`
+	})
+	if homeIdx < 0 {
+		t.Fatalf("no canonical Link route for the home page's markdown twin")
+	}
+	if want := `<https://example.com/>; rel="canonical"`; home.Headers["Link"] != want {
+		t.Errorf("home markdown canonical = %q, want %q", home.Headers["Link"], want)
+	}
+
+	// The unguarded pattern is the one that shipped the bug: it swallowed /index.md too
+	for i, route := range routes {
+		if route.Source == `^/(.+)\.md$` {
+			t.Errorf("route %d matches every .md path, including the physical /index.md and /404.md", i)
+		}
+	}
+}
