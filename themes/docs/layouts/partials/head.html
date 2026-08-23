@@ -34,8 +34,7 @@
 {{- with .OutputFormats.Get "markdown" }}
 <link rel="alternate" type="{{ .MediaType.Type }}" href="{{ partial "markdown-url.html" $ | safeURL }}" />
 {{- end }}
-{{- /* The 404 page has no markdown output of its own; its body is published by the
-       "notfound" output format on the home page, at /404.md */}}
+{{- /* The 404 page has no markdown output of its own; its body is published by the "notfound" output format on the home page, at /404.md */}}
 {{- if eq .Kind "404" }}
 {{- with .Site.Home.OutputFormats.Get "notfound" }}
 <link rel="alternate" type="{{ .MediaType.Type }}" href="{{ .RelPermalink }}" />

@@ -53,32 +53,26 @@ const (
 
 	// notFoundHTMLFile is Hugo's rendered 404 page, served to clients that asked for HTML
 	notFoundHTMLFile = "404.html"
-	// notFoundMarkdownFile is the markdown body of the same page, written by the theme's
-	// "notfound" output format and served to clients that did not ask for HTML
+	// notFoundMarkdownFile is the markdown body of the same page, written by the theme's "notfound" output format and served to clients that did not ask for HTML
 	notFoundMarkdownFile = "404.md"
-	// homeMarkdownFile is the home page's markdown twin; its presence is what tells the
-	// builder the site published markdown twins at all
+	// homeMarkdownFile is the home page's markdown twin
+	// Its presence is what tells the builder the site published markdown twins at all
 	homeMarkdownFile = "index.md"
 
 	// varyOnAccept is the Vary value for URLs whose representation depends on Accept.
-	// Accept-Encoding is repeated because setting Vary here replaces what Vercel would send.
+	// Accept-Encoding is repeated because setting Vary here replaces what Vercel would send
 	varyOnAccept = "Accept, Accept-Encoding"
 
-	// markdownContentType is set explicitly on negotiated markdown responses. The file
-	// extension already implies it, but the response is served from a URL that otherwise
-	// returns HTML, so the type is stated rather than inferred.
+	// markdownContentType is set explicitly on negotiated markdown responses
 	markdownContentType = "text/markdown; charset=utf-8"
 
-	// acceptsMarkdown matches an Accept header asking for text/markdown at full quality.
-	// Route conditions are matched against the entire header value, hence the wrapping
-	// ".*". The negative lookahead skips the type when it carries an explicit q-value
-	// below 1 (e.g. "text/html, text/markdown;q=0.5"), where the client prefers HTML;
-	// "[^,]*" keeps that lookahead inside the one media range being examined.
+	// acceptsMarkdown matches an Accept header asking for text/markdown at full quality
+	// Route conditions are matched against the entire header value, hence the wrapping ".*"
+	// The negative lookahead skips the type when it carries an explicit q-value below 1 (e.g. "text/html, text/markdown;q=0.5"), where the client prefers HTML; "[^,]*" keeps that lookahead inside the one media range being examined
 	acceptsMarkdown = `.*text/markdown(?![^,]*;\s*q=0).*`
 
-	// acceptsHTML matches an Accept header that mentions text/html at all. It is used as a
-	// "missing" condition on the 404 response: browsers always ask for HTML, so anything
-	// else (curl, fetch, an agent) is served the markdown body it can actually act on.
+	// acceptsHTML matches an Accept header that mentions text/html at all
+	// It is used as a "missing" condition on the 404 response: browsers always ask for HTML, so anything else (curl, fetch, an agent) is served the markdown body it can actually act on.
 	acceptsHTML = `.*text/html.*`
 )
 
@@ -130,8 +124,7 @@ type outputRoute struct {
 	Status  int               `json:"status,omitempty"`
 	// Has requires every listed condition to match for the route to apply
 	Has []routeCondition `json:"has,omitempty"`
-	// Missing requires every listed condition to *not* match, and is satisfied when the
-	// header is absent entirely — used to detect clients that never asked for HTML
+	// Missing requires every listed condition to *not* match, and is satisfied when the header is absent entirely — used to detect clients that never asked for HTML
 	Missing  []routeCondition `json:"missing,omitempty"`
 	Continue bool             `json:"continue,omitempty"`
 	Handle   string           `json:"handle,omitempty"`
@@ -627,8 +620,7 @@ func writeOutputConfig(cfg *projectConfig) error {
 }
 
 // siteOutputs records which optional files the Hugo build actually published
-// Routes that point at them are only emitted when they exist, so a site that opts out of
-// markdown twins or ships its own 404 handling is never routed to a missing file
+// Routes that point at them are only emitted when they exist, so a site that opts out of markdown twins or ships its own 404 handling is never routed to a missing file
 type siteOutputs struct {
 	// Markdown is true when the site published markdown twins of its pages
 	Markdown bool
@@ -638,9 +630,8 @@ type siteOutputs struct {
 	NotFoundMarkdown bool
 }
 
-// detectSiteOutputs inspects the generated static tree for the optional outputs the
-// builder routes to. Checking the built files (rather than the config) keeps this honest
-// for projects that hand-write hugo.toml and never opted into the theme's output formats.
+// detectSiteOutputs inspects the generated static tree for the optional outputs the builder routes to
+// Checking the built files (rather than the config) keeps this honest for projects that hand-write hugo.toml and never opted into the theme's output formats.
 func detectSiteOutputs(root string) siteOutputs {
 	return siteOutputs{
 		Markdown:         isRegularFile(filepath.Join(root, homeMarkdownFile)),
@@ -734,10 +725,8 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteO
 		},
 	)
 
-	// Markdown content negotiation (acceptmarkdown.com): a page URL serves its markdown
-	// twin when the client asks for text/markdown, so an agent gets markdown from the same
-	// address a browser gets HTML. Vary tells caches the representation depends on Accept,
-	// and is set for every client — including the ones that receive the HTML variant.
+	// Markdown content negotiation (acceptmarkdown.com): a page URL serves its markdown twin when the client asks for text/markdown, so an agent gets markdown from the same address a browser gets HTML
+	// Vary tells caches the representation depends on Accept, and is set for every client — including the ones that receive the HTML variant.
 	if outputs.Markdown {
 		markdownRequested := []routeCondition{{Type: "header", Key: "accept", Value: acceptsMarkdown}}
 		routes = append(routes,
@@ -770,11 +759,8 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteO
 		outputRoute{Handle: "filesystem"},
 	)
 
-	// Routes below the filesystem handler are only reached when nothing on disk matched,
-	// which is where the site's own 404 page is served: a real 404 status with a body the
-	// client can recover from. The markdown body wins for anything that did not ask for
-	// HTML (curl, fetch, agents) because it carries the links — site index, sitemap,
-	// llms.txt, sections — as usable text.
+	// Routes below the filesystem handler are only reached when nothing on disk matched, which is where the site's own 404 page is served: a real 404 status with a body the client can recover from
+	// The markdown body wins for anything that did not ask for HTML (curl, fetch, agents) because it carries the links — site index, sitemap, llms.txt, sections — as usable text.
 	routes = append(routes, notFoundRoutes(outputs)...)
 
 	routes = append(routes,
@@ -785,11 +771,9 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteO
 	return routes, nil
 }
 
-// notFoundRoutes returns the fallback routes that serve the site's own 404 page once the
-// filesystem has missed. Nothing is emitted when neither representation was published,
-// leaving Vercel's default 404 (still a real 404 status) in place.
-// They deliberately do not live in the "error" phase: a catch-all there would also swallow
-// a function's 5xx and report it as a missing page.
+// notFoundRoutes returns the fallback routes that serve the site's own 404 page once the filesystem has missed
+// Nothing is emitted when neither representation was published, leaving Vercel's default 404 (still a real 404 status) in place.
+// They deliberately do not live in the "error" phase: a catch-all there would also swallow a function's 5xx and report it as a missing page.
 func notFoundRoutes(outputs siteOutputs) []outputRoute {
 	if !outputs.NotFoundHTML && !outputs.NotFoundMarkdown {
 		return nil

@@ -19,8 +19,7 @@ func indexOfHeaderRoute(routes []outputRoute, key string) int {
 	return -1
 }
 
-// indexOfHandle returns the index of the route entering the given phase, or -1 when the
-// phase is never entered.
+// indexOfHandle returns the index of the route entering the given phase, or -1 when the phase is never entered.
 func indexOfHandle(routes []outputRoute, handle string) int {
 	for i, route := range routes {
 		if route.Handle == handle {
@@ -42,8 +41,7 @@ func findRoute(routes []outputRoute, match func(outputRoute) bool) (int, outputR
 	return -1, outputRoute{}
 }
 
-// hasAcceptCondition reports whether the conditions ask about the request's Accept header
-// with the given pattern.
+// hasAcceptCondition reports whether the conditions ask about the request's Accept header with the given pattern.
 func hasAcceptCondition(conditions []routeCondition, pattern string) bool {
 	for _, condition := range conditions {
 		if condition.Type == "header" && condition.Key == "accept" && condition.Value == pattern {
@@ -315,9 +313,7 @@ func TestHugoConfigGitHubPath(t *testing.T) {
 	}
 }
 
-// TestAssembleRoutesMarkdownNegotiation confirms a site that published markdown twins
-// serves them from the HTML page's own URL when the client asks for text/markdown, and
-// that those URLs advertise the negotiation with Vary: Accept.
+// TestAssembleRoutesMarkdownNegotiation confirms a site that published markdown twins serves them from the HTML page's own URL when the client asks for text/markdown, and that those URLs advertise the negotiation with Vary: Accept.
 func TestAssembleRoutesMarkdownNegotiation(t *testing.T) {
 	routes, err := assembleRoutes(consumerRoutes{}, "", siteOutputs{Markdown: true})
 	if err != nil {
@@ -346,8 +342,7 @@ func TestAssembleRoutesMarkdownNegotiation(t *testing.T) {
 		t.Errorf("page negotiation dest = %q, want %q", page.Dest, "/$1/index.md")
 	}
 
-	// Caches must be told the representation depends on Accept, and the header has to be
-	// set before the negotiation rewrite so both variants carry it
+	// Caches must be told the representation depends on Accept, and the header has to be set before the negotiation rewrite so both variants carry it
 	varyIdx := indexOfHeaderRoute(routes, "Vary")
 	if varyIdx < 0 {
 		t.Fatalf("no route sets Vary")
@@ -362,8 +357,7 @@ func TestAssembleRoutesMarkdownNegotiation(t *testing.T) {
 		t.Errorf("Vary route (%d) must precede the negotiation routes (%d, %d)", varyIdx, homeIdx, pageIdx)
 	}
 
-	// Negotiation runs after the Plausible functions (so /pls/* is never rewritten to
-	// markdown) and before the filesystem serves the HTML page
+	// Negotiation runs after the Plausible functions (so /pls/* is never rewritten to markdown) and before the filesystem serves the HTML page
 	plsIdx, _ := findRoute(routes, func(route outputRoute) bool {
 		return route.Dest == "/pls-api"
 	})
@@ -382,8 +376,7 @@ func TestAssembleRoutesMarkdownNegotiation(t *testing.T) {
 	}
 }
 
-// TestAssembleRoutesWithoutMarkdown confirms a site that published no markdown twins gets
-// no negotiation routes, so a page URL is never rewritten to a file that does not exist.
+// TestAssembleRoutesWithoutMarkdown confirms a site that published no markdown twins gets no negotiation routes, so a page URL is never rewritten to a file that does not exist.
 func TestAssembleRoutesWithoutMarkdown(t *testing.T) {
 	routes, err := assembleRoutes(consumerRoutes{}, "", siteOutputs{})
 	if err != nil {
@@ -398,11 +391,11 @@ func TestAssembleRoutesWithoutMarkdown(t *testing.T) {
 	}
 }
 
-// TestNotFoundRoutes confirms missing paths get a real 404 with a body the client can use:
-// markdown for anything that did not ask for HTML, the rendered page for browsers.
+// TestNotFoundRoutes confirms missing paths get a real 404 with a body the client can use: markdown for anything that did not ask for HTML, the rendered page for browsers.
 func TestNotFoundRoutes(t *testing.T) {
 	// With neither representation published, Vercel's own 404 handling is left in place
-	if got := notFoundRoutes(siteOutputs{}); len(got) != 0 {
+	got := notFoundRoutes(siteOutputs{})
+	if len(got) != 0 {
 		t.Errorf("expected no error routes when no 404 page was published, got %+v", got)
 	}
 
@@ -463,8 +456,7 @@ func TestNotFoundRoutes(t *testing.T) {
 	}
 }
 
-// TestAssembleRoutesNotFoundFollowsFilesystem confirms the 404 fallback is only reached
-// once the filesystem has missed, so it never shadows a page that exists.
+// TestAssembleRoutesNotFoundFollowsFilesystem confirms the 404 fallback is only reached once the filesystem has missed, so it never shadows a page that exists.
 func TestAssembleRoutesNotFoundFollowsFilesystem(t *testing.T) {
 	routes, err := assembleRoutes(consumerRoutes{}, "", siteOutputs{Markdown: true, NotFoundHTML: true, NotFoundMarkdown: true})
 	if err != nil {
@@ -490,13 +482,13 @@ func TestAssembleRoutesNotFoundFollowsFilesystem(t *testing.T) {
 	}
 
 	// The routing table ends there: nothing is emitted into a later phase
-	if idx := indexOfHandle(routes, "error"); idx >= 0 {
+	idx := indexOfHandle(routes, "error")
+	if idx >= 0 {
 		t.Errorf("unexpected error phase at %d", idx)
 	}
 }
 
-// TestHugoConfigPublishesNotFoundMarkdown confirms the generated hugo.toml opts the home
-// page into the theme's "notfound" output format, which is what writes /404.md.
+// TestHugoConfigPublishesNotFoundMarkdown confirms the generated hugo.toml opts the home page into the theme's "notfound" output format, which is what writes /404.md.
 func TestHugoConfigPublishesNotFoundMarkdown(t *testing.T) {
 	var out bytes.Buffer
 	err := hugoConfigTemplate.Execute(&out, struct {
@@ -510,7 +502,8 @@ func TestHugoConfigPublishesNotFoundMarkdown(t *testing.T) {
 		t.Fatalf("render Hugo config: %v", err)
 	}
 
-	if want := `home    = ["html", "markdown", "notfound"]`; !strings.Contains(out.String(), want) {
+	want := `home    = ["html", "markdown", "notfound"]`
+	if !strings.Contains(out.String(), want) {
 		t.Errorf("generated Hugo config missing %q:\n%s", want, out.String())
 	}
 }
