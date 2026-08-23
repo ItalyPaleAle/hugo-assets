@@ -6,6 +6,7 @@ Disallow: {{ . }}{{ end }}{{ end }}
 Disallow: /401.html
 Disallow: /403.html
 Disallow: /404.html
+Disallow: /404.md
 Disallow: /418.html
 Disallow: /500.html
 Disallow: /502.html

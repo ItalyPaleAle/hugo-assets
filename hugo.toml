@@ -26,7 +26,17 @@
     isHTML = false
     # rel defaults to "alternate" — used for the <link rel="alternate"> tag.
 
+  # Markdown body of the "page not found" response, written to /404.md and served by the Vercel builder's 404 routes to clients that asked for markdown.
+  # Hugo renders the 404 page kind for the HTML output format only, so this format is attached to the home page and its baseName puts the file at /404.md.
+  [outputFormats.notfound]
+    mediaType = "text/markdown"
+    baseName = "404"
+    isPlainText = true
+    isHTML = false
+    # Not an alternative representation of the home page, so it stays out of .AlternativeOutputFormats (and the rel="alternate" links built from it).
+    notAlternative = true
+
 [outputs]
-  home    = ["html", "markdown"]
+  home    = ["html", "markdown", "notfound"]
   section = ["html", "markdown"]
   page    = ["html", "markdown"]

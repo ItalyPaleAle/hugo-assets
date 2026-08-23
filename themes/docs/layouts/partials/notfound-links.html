@@ -1,0 +1,34 @@
+{{- /*
+  notfound-links.html — the recovery links shown on the 404 page: the site index,
+  the sitemap, the optional llms.txt, and the top-level sections. Kept in a partial
+  so the HTML 404 page and any site that overrides layouts/404.html share one list.
+*/ -}}
+<p>Try one of these instead:</p>
+
+<ul>
+  <li><a href="{{ "" | relURL }}">{{ .Site.Title }} home</a>{{ with .Site.Params.description }} — {{ . }}{{ end }}</li>
+  <li><a href="{{ "sitemap.xml" | relURL }}">Sitemap</a> — every page on this site</li>
+  {{- with .Site.Params.robots }}{{ if .llmsTXT }}
+  <li><a href="{{ "llms.txt" | relURL }}">llms.txt</a> — a compact index of this site for AI agents</li>
+  {{- end }}{{ end }}
+</ul>
+
+{{- with (.Site.GetPage "/").Sections }}
+
+<p>Sections:</p>
+
+<ul>
+  {{- range . }}
+  <li>
+    <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ with .Description }} — {{ . }}{{ end }}
+    {{- with .Pages }}
+    <ul>
+      {{- range . }}
+      <li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>
+      {{- end }}
+    </ul>
+    {{- end }}
+  </li>
+  {{- end }}
+</ul>
+{{- end }}

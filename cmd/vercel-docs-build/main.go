@@ -50,6 +50,26 @@ const (
 	hugoConfigFile = "hugo.toml"
 	// themeImportPath is the Hugo module every generated config imports
 	themeImportPath = "github.com/italypaleale/hugo-assets"
+
+	// notFoundHTMLFile is Hugo's rendered 404 page, the default body for a missing path
+	notFoundHTMLFile = "404.html"
+	// notFoundMarkdownFile is the markdown body of the same page, written by the theme's "notfound" output format and served to clients that asked for markdown
+	notFoundMarkdownFile = "404.md"
+	// homeMarkdownFile is the home page's markdown twin
+	// Its presence is what tells the builder the site published markdown twins at all
+	homeMarkdownFile = "index.md"
+
+	// varyOnAccept is the Vary value for URLs whose representation depends on Accept.
+	// Accept-Encoding is repeated because setting Vary here replaces what Vercel would send
+	varyOnAccept = "Accept, Accept-Encoding"
+
+	// markdownContentType is set explicitly on negotiated markdown responses
+	markdownContentType = "text/markdown; charset=utf-8"
+
+	// acceptsMarkdown matches an Accept header asking for text/markdown at full quality
+	// Route conditions are matched against the entire header value, hence the wrapping ".*"
+	// The negative lookahead skips the type when it carries an explicit q-value below 1 (e.g. "text/html, text/markdown;q=0.5"), where the client prefers HTML; "[^,]*" keeps that lookahead inside the one media range being examined
+	acceptsMarkdown = `.*text/markdown(?![^,]*;\s*q=0).*`
 )
 
 // vercelRedirect models one redirect rule a project adds in its config.json
@@ -94,12 +114,23 @@ type outputConfig struct {
 // outputRoute models one Build Output API route
 // Routes are used for shared Plausible functions, static filesystem handling, and translated headers
 type outputRoute struct {
-	Source   string            `json:"src,omitempty"`
-	Dest     string            `json:"dest,omitempty"`
-	Headers  map[string]string `json:"headers,omitempty"`
-	Status   int               `json:"status,omitempty"`
-	Continue bool              `json:"continue,omitempty"`
-	Handle   string            `json:"handle,omitempty"`
+	Source  string            `json:"src,omitempty"`
+	Dest    string            `json:"dest,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Status  int               `json:"status,omitempty"`
+	// Has requires every listed condition to match for the route to apply
+	Has      []routeCondition `json:"has,omitempty"`
+	Continue bool             `json:"continue,omitempty"`
+	Handle   string           `json:"handle,omitempty"`
+}
+
+// routeCondition models one Build Output API has/missing condition
+// Only header conditions are used here, to route on the request's Accept header
+type routeCondition struct {
+	Type string `json:"type"`
+	Key  string `json:"key"`
+	// Value is a regular expression matched against the whole header value
+	Value string `json:"value,omitempty"`
 }
 
 // functionConfig is the minimal .vc-config.json shape Vercel needs for a Node function
@@ -482,8 +513,9 @@ enableRobotsTXT = true
 [taxonomies]
 
 # Output HTML and Markdown for AI agents
+# "notfound" is the theme's markdown 404 body, published at /404.md
 [outputs]
-  home    = ["html", "markdown"]
+  home    = ["html", "markdown", "notfound"]
   section = ["html", "markdown"]
   page    = ["html", "markdown"]
 `))
@@ -557,8 +589,11 @@ func writeOutputConfig(cfg *projectConfig) error {
 	// headers, redirects, and rewrites on top of the builder's baked-in defaults
 	consumer := consumerRoutesFromConfig(cfg)
 
+	// Look at what Hugo actually published so the builder only routes to files that exist
+	outputs := detectSiteOutputs(staticDir)
+
 	// Assemble the full route list, then write it; assembleRoutes is kept env-free for testing
-	routes, err := assembleRoutes(consumer, canonicalBase(cfg))
+	routes, err := assembleRoutes(consumer, canonicalBase(cfg), outputs)
 	if err != nil {
 		return err
 	}
@@ -578,10 +613,42 @@ func writeOutputConfig(cfg *projectConfig) error {
 	return nil
 }
 
+// siteOutputs records which optional files the Hugo build actually published
+// Routes that point at them are only emitted when they exist, so a site that opts out of markdown twins or ships its own 404 handling is never routed to a missing file
+type siteOutputs struct {
+	// Markdown is true when the site published markdown twins of its pages
+	Markdown bool
+	// NotFoundHTML is true when Hugo rendered a 404.html
+	NotFoundHTML bool
+	// NotFoundMarkdown is true when the markdown body of the 404 page was published
+	NotFoundMarkdown bool
+}
+
+// detectSiteOutputs inspects the generated static tree for the optional outputs the builder routes to
+// Checking the built files (rather than the config) keeps this honest for projects that hand-write hugo.toml and never opted into the theme's output formats.
+func detectSiteOutputs(root string) siteOutputs {
+	return siteOutputs{
+		Markdown:         isRegularFile(filepath.Join(root, homeMarkdownFile)),
+		NotFoundHTML:     isRegularFile(filepath.Join(root, notFoundHTMLFile)),
+		NotFoundMarkdown: isRegularFile(filepath.Join(root, notFoundMarkdownFile)),
+	}
+}
+
+// isRegularFile reports whether path exists and is a regular file
+// Any error (including a directory in the way) is treated as "not published"
+func isRegularFile(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return info.Mode().IsRegular()
+}
+
 // assembleRoutes builds the ordered Build Output API route list from the builder's default
 // header rules, the consumer's translated rules, and the shared markdown/Plausible/static routing
 // canonicalBase is passed in (rather than read from the environment) so this stays a pure function
-func assembleRoutes(consumer consumerRoutes, canonicalBase string) ([]outputRoute, error) {
+func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteOutputs) ([]outputRoute, error) {
 	// The baked-in security/cache headers apply to every site unless a consumer overrides them
 	defaults, err := defaultHeaderRoutes()
 	if err != nil {
@@ -652,16 +719,92 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string) ([]outputRout
 		},
 	)
 
+	// Markdown content negotiation (acceptmarkdown.com): a page URL serves its markdown twin when the client asks for text/markdown, so an agent gets markdown from the same address a browser gets HTML
+	// Vary tells caches the representation depends on Accept, and is set for every client — including the ones that receive the HTML variant.
+	if outputs.Markdown {
+		markdownRequested := []routeCondition{{Type: "header", Key: "accept", Value: acceptsMarkdown}}
+		routes = append(routes,
+			outputRoute{
+				Source:   "^/([^.]*?)/?$",
+				Headers:  map[string]string{"Vary": varyOnAccept},
+				Continue: true,
+			},
+			// Home is published at /index.md; it has no clean ".md" sibling
+			outputRoute{
+				Source:  "^/$",
+				Has:     markdownRequested,
+				Dest:    "/index.md",
+				Headers: map[string]string{"Content-Type": markdownContentType},
+			},
+			// Every other page is published next to its HTML at /<page>/index.md
+			outputRoute{
+				Source:  "^/([^.]+?)/?$",
+				Has:     markdownRequested,
+				Dest:    "/$1/index.md",
+				Headers: map[string]string{"Content-Type": markdownContentType},
+			},
+		)
+	}
+
 	routes = append(routes,
 		// Serve the clean markdown URL from its physical index.md, then let projects' own rewrites take over.
 		outputRoute{Source: "^/(.+)\\.md$", Dest: "/$1/index.md"},
 		// Handle from the filesystem
 		outputRoute{Handle: "filesystem"},
+	)
+
+	// Routes below the filesystem handler are only reached when nothing on disk matched, which is where the site's own 404 page is served: a real 404 status with a body the client can recover from
+	// The rendered page is the default; the markdown body is served on the same terms as a page URL, to clients that asked for markdown or requested a ".md" address.
+	routes = append(routes, notFoundRoutes(outputs)...)
+
+	routes = append(routes,
 		// Miss phase: only reached when no real file matched.
 		outputRoute{Handle: "miss"},
 	)
 
 	return routes, nil
+}
+
+// notFoundRoutes returns the fallback routes that serve the site's own 404 page once the filesystem has missed
+// Nothing is emitted when neither representation was published, leaving Vercel's default 404 (still a real 404 status) in place.
+// They deliberately do not live in the "error" phase: a catch-all there would also swallow a function's 5xx and report it as a missing page.
+func notFoundRoutes(outputs siteOutputs) []outputRoute {
+	if !outputs.NotFoundHTML && !outputs.NotFoundMarkdown {
+		return nil
+	}
+
+	var routes []outputRoute
+
+	if outputs.NotFoundMarkdown {
+		routes = append(routes,
+			// A request for a markdown URL gets markdown back, whatever it sent in Accept
+			outputRoute{
+				Source:  "^.*\\.md$",
+				Status:  404,
+				Dest:    "/" + notFoundMarkdownFile,
+				Headers: map[string]string{"Content-Type": markdownContentType, "Vary": varyOnAccept},
+			},
+			// Clients that asked for markdown get it here too, on the same terms as a page URL
+			outputRoute{
+				Source:  "/.*",
+				Has:     []routeCondition{{Type: "header", Key: "accept", Value: acceptsMarkdown}},
+				Status:  404,
+				Dest:    "/" + notFoundMarkdownFile,
+				Headers: map[string]string{"Content-Type": markdownContentType, "Vary": varyOnAccept},
+			},
+		)
+	}
+
+	if outputs.NotFoundHTML {
+		routes = append(routes, outputRoute{
+			Source:  "/.*",
+			Status:  404,
+			Dest:    "/" + notFoundHTMLFile,
+			Headers: map[string]string{"Vary": varyOnAccept},
+		})
+	}
+
+	return routes
 }
 
 // consumerRoutes groups the routes translated from a project's config.json by the

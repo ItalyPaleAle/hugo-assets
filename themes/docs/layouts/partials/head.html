@@ -9,9 +9,14 @@
 </title>
 {{- with .Params.description }}<meta name="description" content="{{ . }}" />{{- end }}
 
+{{- /* The 404 page is served for any missing address, so it gets no canonical URL and is never indexed */}}
+{{- if eq .Kind "404" }}
+<meta name="robots" content="noindex" />
+{{- else }}
 <link rel="canonical" href="{{ .Permalink }}" />
 {{- if .Sitemap.Disable }}
 <meta name="robots" content="noindex" />
+{{- end }}
 {{- end }}
 
 {{- $scheme := partial "theme-scheme.html" . -}}
@@ -28,6 +33,12 @@
 
 {{- with .OutputFormats.Get "markdown" }}
 <link rel="alternate" type="{{ .MediaType.Type }}" href="{{ partial "markdown-url.html" $ | safeURL }}" />
+{{- end }}
+{{- /* The 404 page has no markdown output of its own; its body is published by the "notfound" output format on the home page, at /404.md */}}
+{{- if eq .Kind "404" }}
+{{- with .Site.Home.OutputFormats.Get "notfound" }}
+<link rel="alternate" type="{{ .MediaType.Type }}" href="{{ .RelPermalink }}" />
+{{- end }}
 {{- end }}
 
 {{- template "_internal/opengraph.html" . }}
