@@ -101,7 +101,9 @@ custom routing in `config.json` instead.
 The clean `.md` URL is the discoverable address, but an agent shouldn't have to rewrite URLs to get markdown. Every page URL also answers with its markdown twin when the request asks for it, following the [acceptmarkdown.com](https://acceptmarkdown.com) convention:
 
 ```console
-$ curl -sI -H 'Accept: text/markdown' https://example.com/docs/setup/ | grep -i '^content-type\|^vary' content-type: text/markdown; charset=utf-8 vary: Accept, Accept-Encoding
+$ curl -sI -H 'Accept: text/markdown' https://example.com/docs/setup/ | grep -i '^content-type\|^vary'
+content-type: text/markdown; charset=utf-8
+vary: Accept, Accept-Encoding
 ```
 
 - The negotiated response is served from the same physical file as `/docs/setup.md`, so both routes return identical bytes; the URL stays as requested.
@@ -113,8 +115,8 @@ $ curl -sI -H 'Accept: text/markdown' https://example.com/docs/setup/ | grep -i 
 
 A missing path returns a real `404` with a body the client can recover from, rather than a bare status:
 
-- Clients that asked for HTML get the theme's rendered 404 page, which links to the site index, the sitemap, `llms.txt` (when enabled), and every section.
-- Everything else — `curl`, `fetch`, an agent, or any request for a `.md` URL — gets the same links as markdown from `/404.md`, published by the theme's `notfound` output format.
+- By default — including for a client that sends no `Accept` at all — the response is the theme's rendered 404 page, which links to the site index, the sitemap, `llms.txt` (when enabled), and every section.
+- Clients that ask for markdown get the same links as markdown from `/404.md`, published by the theme's `notfound` output format. That is `Accept: text/markdown` on the same terms as a page URL, or any request for a `.md` address.
 
 ```console
 $ curl -s -o /dev/null -w '%{http_code}\n' https://example.com/nope

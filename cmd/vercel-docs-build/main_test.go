@@ -391,12 +391,12 @@ func TestAssembleRoutesWithoutMarkdown(t *testing.T) {
 	}
 }
 
-// TestNotFoundRoutes confirms missing paths get a real 404 with a body the client can use: markdown for anything that did not ask for HTML, the rendered page for browsers.
+// TestNotFoundRoutes confirms missing paths get a real 404 with a body the client can use: the rendered page by default, markdown only for clients that asked for it.
 func TestNotFoundRoutes(t *testing.T) {
 	// With neither representation published, Vercel's own 404 handling is left in place
 	got := notFoundRoutes(siteOutputs{})
 	if len(got) != 0 {
-		t.Errorf("expected no error routes when no 404 page was published, got %+v", got)
+		t.Errorf("expected no 404 routes when no 404 page was published, got %+v", got)
 	}
 
 	routes := notFoundRoutes(siteOutputs{NotFoundHTML: true, NotFoundMarkdown: true})
@@ -416,18 +416,18 @@ func TestNotFoundRoutes(t *testing.T) {
 		return strings.HasSuffix(route.Source, "\\.md$")
 	})
 	if mdIdx < 0 {
-		t.Fatalf("no error route for markdown URLs")
+		t.Fatalf("no 404 route for markdown URLs")
 	}
 	if md.Dest != "/404.md" || md.Status != 404 {
 		t.Errorf("markdown 404 = %q/%d, want %q/404", md.Dest, md.Status, "/404.md")
 	}
 
-	// Clients that never asked for HTML (curl, fetch, agents) get the markdown body too
+	// Clients that asked for markdown get the markdown body here too
 	negotiatedIdx, negotiated := findRoute(routes, func(route outputRoute) bool {
-		return hasAcceptCondition(route.Missing, acceptsHTML)
+		return hasAcceptCondition(route.Has, acceptsMarkdown)
 	})
 	if negotiatedIdx < 0 {
-		t.Fatalf("no error route for clients that did not ask for HTML")
+		t.Fatalf("no 404 route negotiating on Accept: text/markdown")
 	}
 	if negotiated.Dest != "/404.md" || negotiated.Status != 404 {
 		t.Errorf("negotiated 404 = %q/%d, want %q/404", negotiated.Dest, negotiated.Status, "/404.md")
@@ -438,10 +438,15 @@ func TestNotFoundRoutes(t *testing.T) {
 		return route.Dest == "/404.html"
 	})
 	if htmlIdx < 0 {
-		t.Fatalf("no error route for the rendered 404 page")
+		t.Fatalf("no 404 route for the rendered 404 page")
 	}
 	if html.Status != 404 {
 		t.Errorf("HTML 404 status = %d, want 404", html.Status)
+	}
+
+	// The rendered page is what a client gets when it did not ask for anything in particular, so it must not be conditioned on Accept
+	if len(html.Has) > 0 {
+		t.Errorf("the rendered 404 page must be unconditional, got has=%+v", html.Has)
 	}
 	if htmlIdx < mdIdx || htmlIdx < negotiatedIdx {
 		t.Errorf("HTML 404 route (%d) must come after the markdown routes (%d, %d)", htmlIdx, mdIdx, negotiatedIdx)

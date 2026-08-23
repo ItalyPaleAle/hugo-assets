@@ -1,9 +1,9 @@
 {{- /*
   home.notfound.md — the markdown body of the "page not found" response, published
-  at /404.md and served to clients that did not ask for HTML (see the Vercel
-  builder's 404 routes). It exists so an agent that hits a dead link gets something
-  it can act on: where the site's index, sitemap, and markdown twins are, plus the
-  top-level sections.
+  at /404.md and served to clients that asked for markdown (see the Vercel builder's
+  404 routes). It exists so an agent that hits a dead link gets something it can act
+  on: where the site's index, sitemap, and markdown twins are, plus the top-level
+  sections.
 
   It hangs off the home page because Hugo renders the 404 page kind for the HTML
   output format only; the "notfound" output format's baseName writes it to /404.md.

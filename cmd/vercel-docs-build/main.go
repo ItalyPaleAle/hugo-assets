@@ -51,9 +51,9 @@ const (
 	// themeImportPath is the Hugo module every generated config imports
 	themeImportPath = "github.com/italypaleale/hugo-assets"
 
-	// notFoundHTMLFile is Hugo's rendered 404 page, served to clients that asked for HTML
+	// notFoundHTMLFile is Hugo's rendered 404 page, the default body for a missing path
 	notFoundHTMLFile = "404.html"
-	// notFoundMarkdownFile is the markdown body of the same page, written by the theme's "notfound" output format and served to clients that did not ask for HTML
+	// notFoundMarkdownFile is the markdown body of the same page, written by the theme's "notfound" output format and served to clients that asked for markdown
 	notFoundMarkdownFile = "404.md"
 	// homeMarkdownFile is the home page's markdown twin
 	// Its presence is what tells the builder the site published markdown twins at all
@@ -70,10 +70,6 @@ const (
 	// Route conditions are matched against the entire header value, hence the wrapping ".*"
 	// The negative lookahead skips the type when it carries an explicit q-value below 1 (e.g. "text/html, text/markdown;q=0.5"), where the client prefers HTML; "[^,]*" keeps that lookahead inside the one media range being examined
 	acceptsMarkdown = `.*text/markdown(?![^,]*;\s*q=0).*`
-
-	// acceptsHTML matches an Accept header that mentions text/html at all
-	// It is used as a "missing" condition on the 404 response: browsers always ask for HTML, so anything else (curl, fetch, an agent) is served the markdown body it can actually act on.
-	acceptsHTML = `.*text/html.*`
 )
 
 // vercelRedirect models one redirect rule a project adds in its config.json
@@ -123,9 +119,7 @@ type outputRoute struct {
 	Headers map[string]string `json:"headers,omitempty"`
 	Status  int               `json:"status,omitempty"`
 	// Has requires every listed condition to match for the route to apply
-	Has []routeCondition `json:"has,omitempty"`
-	// Missing requires every listed condition to *not* match, and is satisfied when the header is absent entirely — used to detect clients that never asked for HTML
-	Missing  []routeCondition `json:"missing,omitempty"`
+	Has      []routeCondition `json:"has,omitempty"`
 	Continue bool             `json:"continue,omitempty"`
 	Handle   string           `json:"handle,omitempty"`
 }
@@ -760,7 +754,7 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteO
 	)
 
 	// Routes below the filesystem handler are only reached when nothing on disk matched, which is where the site's own 404 page is served: a real 404 status with a body the client can recover from
-	// The markdown body wins for anything that did not ask for HTML (curl, fetch, agents) because it carries the links — site index, sitemap, llms.txt, sections — as usable text.
+	// The rendered page is the default; the markdown body is served on the same terms as a page URL, to clients that asked for markdown or requested a ".md" address.
 	routes = append(routes, notFoundRoutes(outputs)...)
 
 	routes = append(routes,
@@ -790,10 +784,10 @@ func notFoundRoutes(outputs siteOutputs) []outputRoute {
 				Dest:    "/" + notFoundMarkdownFile,
 				Headers: map[string]string{"Content-Type": markdownContentType, "Vary": varyOnAccept},
 			},
-			// Browsers ask for text/html; everything else is better served the markdown body
+			// Clients that asked for markdown get it here too, on the same terms as a page URL
 			outputRoute{
 				Source:  "/.*",
-				Missing: []routeCondition{{Type: "header", Key: "accept", Value: acceptsHTML}},
+				Has:     []routeCondition{{Type: "header", Key: "accept", Value: acceptsMarkdown}},
 				Status:  404,
 				Dest:    "/" + notFoundMarkdownFile,
 				Headers: map[string]string{"Content-Type": markdownContentType, "Vary": varyOnAccept},
