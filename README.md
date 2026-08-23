@@ -33,7 +33,7 @@ The theme ships the `text/markdown` media type and the `markdown` and `notfound`
   page    = ["html", "markdown"]
 ```
 
-That is the only configuration required. Rebuild and the `.md` files (plus the `rel="alternate"` links) will be generated. `notfound` is what publishes the markdown 404 body at `/404.md`; it hangs off the home page because Hugo renders the 404 page kind for the HTML output format only. Sites generated from `config.json` get this block automatically.
+That is the only configuration required. Rebuild and the `.md` files (plus the `rel="alternate"` links) will be generated. `notfound` is what publishes the markdown 404 body at `/404.md`; it hangs off the home page because Hugo renders the 404 page kind for the HTML output format only. Because it shares the `text/markdown` media type with `markdown`, its template has to be named `layouts/index.notfound.md` — the base name it shares with `layouts/index.md` leaves the output format as the only difference between them, and Hugo's lookup then gives each format its own template. Sites generated from `config.json` get this block automatically.
 
 ### Notes & limitations
 
@@ -49,7 +49,7 @@ Sites deploy through the Build Output API builder at `cmd/vercel-docs-build`, wh
 - **Redirect** — a request for the physical `/docs/setup/index.md` returns a `308` to `/docs/setup.md`, so the clean URL is the single public address.
 - **Canonical** — markdown responses carry a `Link: <…>; rel="canonical"` header pointing at the HTML page, so search engines index the HTML, not the markdown. The canonical origin comes from `baseURL` in `config.json`, or the `DOCS_CANONICAL_BASE` environment override; if neither is set the canonical header is omitted.
 
-The home page is the one exception: it has no clean `.md` sibling and is served at `/index.md`.
+The two markdown files at the root of the site are the exception: `/index.md` (the home page's twin, which has no clean `.md` sibling) and `/404.md` (the markdown 404 body) are the physical files themselves, so the rewrite skips them and they are served straight off the filesystem.
 
 ### Default headers
 

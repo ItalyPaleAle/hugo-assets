@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -71,6 +72,31 @@ const (
 	// The negative lookahead skips the type when it carries an explicit q-value below 1 (e.g. "text/html, text/markdown;q=0.5"), where the client prefers HTML; "[^,]*" keeps that lookahead inside the one media range being examined
 	acceptsMarkdown = `.*text/markdown(?![^,]*;\s*q=0).*`
 )
+
+// rootMarkdownLookahead returns a PCRE prefix of negative lookaheads that excludes the
+// markdown files published at the root of the static tree: /index.md (the home page's
+// twin) and /404.md (the markdown 404 body)
+//
+// Both are physical files rather than clean URLs, so a pattern that maps "/<page>.md"
+// onto the physical "/<page>/index.md" has to leave them alone: rewriting /index.md to
+// /index/index.md misses the filesystem and 404s the very address the home page's
+// rel="alternate" link, its Link header, and the markdown twins themselves advertise
+func rootMarkdownLookahead() string {
+	var sb strings.Builder
+	for _, name := range []string{homeMarkdownFile, notFoundMarkdownFile} {
+		sb.WriteString("(?!")
+		sb.WriteString(regexp.QuoteMeta(name))
+		sb.WriteString("$)")
+	}
+
+	return sb.String()
+}
+
+// cleanMarkdownURLSource matches the clean ".md" URL of a page whose markdown twin
+// Hugo wrote to "/<page>/index.md", capturing the page path as $1
+func cleanMarkdownURLSource() string {
+	return "^/" + rootMarkdownLookahead() + `(.+)\.md$`
+}
 
 // vercelRedirect models one redirect rule a project adds in its config.json
 // Source is treated as a regex, mirroring how header rules are handled here
@@ -679,7 +705,7 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteO
 	if canonicalBase != "" {
 		routes = append(routes,
 			outputRoute{
-				Source:   "^/(?!index\\.md$)(.+)\\.md$",
+				Source:   cleanMarkdownURLSource(),
 				Headers:  map[string]string{"Link": fmt.Sprintf("<%s/$1/>; rel=\"canonical\"", canonicalBase)},
 				Continue: true,
 			},
@@ -748,7 +774,8 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteO
 
 	routes = append(routes,
 		// Serve the clean markdown URL from its physical index.md, then let projects' own rewrites take over.
-		outputRoute{Source: "^/(.+)\\.md$", Dest: "/$1/index.md"},
+		// /index.md and /404.md are skipped: they are already the physical files, and the filesystem handler below serves them as they are.
+		outputRoute{Source: cleanMarkdownURLSource(), Dest: "/$1/index.md"},
 		// Handle from the filesystem
 		outputRoute{Handle: "filesystem"},
 	)
