@@ -7,3 +7,4 @@
   {{- with $title }} title="{{ . }}"{{ end }}
   {{- if $isExternal }} target="_blank" rel="noopener noreferrer"{{ end -}}
 >{{- $text -}}</a>
+{{- /* This comments removes the trailing newline, which would otherwise add a space after every link, such as before a comma */ -}}
