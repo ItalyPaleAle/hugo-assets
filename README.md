@@ -61,6 +61,10 @@ The builder bakes in a set of security and cache headers that apply to every sit
 
 These defaults live in the builder-managed [`cmd/vercel-docs-build/vercel.json`](cmd/vercel-docs-build/vercel.json), which is the single source of truth (see [Builder-managed `vercel.json`](#builder-managed-verceljson)).
 
+### Plausible proxy
+
+When `plausibleAnalytics` is on, pages load the Plausible script from `/pls/index.<random>.js` and send events to `/pls/api/event`. The builder serves both paths from a Node.js [Routing Middleware](https://vercel.com/docs/routing-middleware) (`_middleware`), which Vercel deploys to every region, so the proxy runs close to each visitor rather than in the project's single function region. The upstream comes from the `PLAUSIBLE_SCRIPT` and `PLAUSIBLE_API_EVENT` environment variables, and requests to it carry a Vercel OIDC token (with the audience in `PLAUSIBLE_OIDC_TOKEN_AUDIENCE`, if set). The script is kept in the Runtime Cache, which is per region.
+
 ### Project hook: extra headers, redirects, and rewrites
 
 Custom routing goes in **your project's `config.json`** (see [Generating `hugo.toml` from `config.json`](#generating-hugotoml-from-configjson)), not in `vercel.json`, which the builder owns. Add your own `headers`, `redirects`, and `rewrites`; `source` is treated as a regular expression. They are layered *on top of* the defaults, so repeating a default header key overrides its value (e.g. to tighten the CSP or change a cache time).

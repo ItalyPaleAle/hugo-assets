@@ -31,9 +31,9 @@ func main() {
 // The docs builder embeds these outputs so consumers do not need esbuild during deployment
 func run() error {
 	// Keep the source/output list explicit so generated files are easy to audit in reviews
+	// The middleware bundles the Plausible proxy handlers it imports
 	functions := []functionSource{
-		{Input: "functions/pls-script.ts", OutputDir: "functions/pls-script"},
-		{Input: "functions/pls-api.ts", OutputDir: "functions/pls-api"},
+		{Input: "functions/middleware.ts", OutputDir: "functions/middleware"},
 	}
 
 	for _, function := range functions {

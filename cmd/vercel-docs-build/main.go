@@ -19,11 +19,11 @@ import (
 
 //go:generate go run ./internal/genfunctions
 
-// functionFiles contains compiled JavaScript functions that every docs site should deploy
+// functionFiles contains the compiled JavaScript middleware that every docs site should deploy
 // Embedding keeps consumers from needing local api/ files or an npm package dependency
 // Regenerate these files with go generate ./cmd/vercel-docs-build
 //
-//go:embed functions/pls-api/*.js functions/pls-script/*.js
+//go:embed functions/middleware/*.js
 var functionFiles embed.FS
 
 // managedVercelJSON is the single source of truth for the builder-managed vercel.json
@@ -41,6 +41,17 @@ const (
 
 	outputDir = ".vercel/output"
 	staticDir = ".vercel/output/static"
+
+	// middlewareName is the Build Output API function that routes reference as their middlewarePath
+	// It matches the name Vercel's own Next.js builder gives its Routing Middleware
+	middlewareName = "_middleware"
+	// middlewareSourceDir holds the compiled middleware embedded in functionFiles
+	middlewareSourceDir = "functions/middleware"
+
+	// plausibleScriptSource matches the proxied Plausible script, /pls/index.js or /pls/index.[random].js
+	plausibleScriptSource = `/pls/index(?:\.[a-fA-F0-9]{1,6})?\.js`
+	// plausibleAPISource matches the proxied Plausible event API, /pls/api and anything below it
+	plausibleAPISource = `/pls/api(?:/(.*))?`
 
 	// projectConfigFile is the optional consumer-authored config the builder reads
 	// It supplies hugo.toml metadata plus optional custom headers/redirects/rewrites
@@ -138,16 +149,20 @@ type outputConfig struct {
 }
 
 // outputRoute models one Build Output API route
-// Routes are used for shared Plausible functions, static filesystem handling, and translated headers
+// Routes are used for the shared Plausible middleware, static filesystem handling, and translated headers
 type outputRoute struct {
 	Source  string            `json:"src,omitempty"`
 	Dest    string            `json:"dest,omitempty"`
 	Headers map[string]string `json:"headers,omitempty"`
 	Status  int               `json:"status,omitempty"`
 	// Has requires every listed condition to match for the route to apply
-	Has      []routeCondition `json:"has,omitempty"`
-	Continue bool             `json:"continue,omitempty"`
-	Handle   string           `json:"handle,omitempty"`
+	Has []routeCondition `json:"has,omitempty"`
+	// MiddlewarePath names the function invoked as Routing Middleware for requests matching Source
+	MiddlewarePath string `json:"middlewarePath,omitempty"`
+	// MiddlewareRawSrc lists the original patterns Source was built from, which Vercel shows for the middleware
+	MiddlewareRawSrc []string `json:"middlewareRawSrc,omitempty"`
+	Continue         bool     `json:"continue,omitempty"`
+	Handle           string   `json:"handle,omitempty"`
 }
 
 // routeCondition models one Build Output API has/missing condition
@@ -165,6 +180,10 @@ type functionConfig struct {
 	Runtime      string `json:"runtime"`
 	Handler      string `json:"handler"`
 	LauncherType string `json:"launcherType"`
+	// ShouldAddHelpers and UseWebAPI match what Vercel's builders emit for Node.js Routing Middleware:
+	// the handler receives a Web Request and returns a Web Response, without the Node request/response helpers
+	ShouldAddHelpers bool `json:"shouldAddHelpers"`
+	UseWebAPI        bool `json:"useWebApi"`
 }
 
 func main() {
@@ -235,13 +254,13 @@ func run() error {
 		return err
 	}
 
-	// Emit shared Vercel functions from embedded compiled JavaScript sources
-	err = writeFunctions()
+	// Emit the shared Routing Middleware from embedded compiled JavaScript sources
+	err = writeMiddleware()
 	if err != nil {
 		return err
 	}
 
-	// Emit the Build Output API config that wires headers, functions, and static files together
+	// Emit the Build Output API config that wires headers, middleware, and static files together
 	err = writeOutputConfig(cfg)
 	if err != nil {
 		return err
@@ -321,41 +340,41 @@ func cleanPublishedFiles(root string) error {
 	})
 }
 
-// writeFunctions copies embedded JavaScript into Vercel function directories
-// The output matches Vercel's Build Output API function directory layout
-func writeFunctions() error {
-	// Map generated Vercel function names to their embedded JavaScript output directories
-	functions := map[string]string{
-		"pls-script": "functions/pls-script",
-		"pls-api":    "functions/pls-api",
+// writeMiddleware copies the embedded JavaScript middleware into its Vercel function directory
+// The output matches Vercel's Build Output API function directory layout; routes turn it into Routing Middleware through middlewarePath
+func writeMiddleware() error {
+	// Build Output API function directories use the <name>.func convention under .vercel/output/functions
+	funcDir := filepath.Join(outputDir, "functions", middlewareName+".func")
+	err := os.MkdirAll(funcDir, 0o755)
+	if err != nil {
+		return fmt.Errorf("create function directory %s: %w", funcDir, err)
 	}
 
-	for name, sourceDir := range functions {
-		// Build Output API function directories use the <name>.func convention under .vercel/output/functions
-		funcDir := filepath.Join(outputDir, "functions", name+".func")
-		err := os.MkdirAll(funcDir, 0o755)
-		if err != nil {
-			return fmt.Errorf("create function directory %s: %w", funcDir, err)
-		}
+	// Copy the checked-in generated handler with its inline sourcemap so deployments do not need esbuild
+	err = copyEmbeddedFunctionDir(middlewareSourceDir, funcDir)
+	if err != nil {
+		return err
+	}
 
-		// Copy the checked-in generated handler with its inline sourcemap so deployments do not need esbuild
-		err = copyEmbeddedFunctionDir(sourceDir, funcDir)
-		if err != nil {
-			return err
-		}
-
-		// Write the runtime metadata Vercel needs to execute the generated Node function
-		err = writeJSON(filepath.Join(funcDir, ".vc-config.json"), functionConfig{
-			Runtime:      nodeRuntime(),
-			Handler:      "index.js",
-			LauncherType: "Nodejs",
-		})
-		if err != nil {
-			return err
-		}
+	// Write the runtime metadata Vercel needs to execute the generated Node.js middleware
+	err = writeJSON(filepath.Join(funcDir, ".vc-config.json"), middlewareFunctionConfig())
+	if err != nil {
+		return err
 	}
 
 	return nil
+}
+
+// middlewareFunctionConfig returns the .vc-config.json for the Routing Middleware
+// No regions are set: Vercel deploys middleware globally, whatever the project's function region
+func middlewareFunctionConfig() functionConfig {
+	return functionConfig{
+		Runtime:          nodeRuntime(),
+		Handler:          "index.js",
+		LauncherType:     "Nodejs",
+		ShouldAddHelpers: false,
+		UseWebAPI:        true,
+	}
 }
 
 // copyEmbeddedFunctionDir copies generated JavaScript artifacts into one Vercel function directory
@@ -608,7 +627,7 @@ func writeHugoConfig(cfg *projectConfig) error {
 }
 
 // writeOutputConfig assembles the Build Output API config from the baked-in default
-// headers, consumer rules, and the shared markdown/Plausible routing and static handling
+// headers, consumer rules, and the shared markdown/Plausible middleware routing and static handling
 // The resulting config.json is what tells Vercel to use Build Output API mode
 func writeOutputConfig(cfg *projectConfig) error {
 	// Translate the project's own config.json routing so consumers can add their own
@@ -672,7 +691,7 @@ func isRegularFile(path string) bool {
 }
 
 // assembleRoutes builds the ordered Build Output API route list from the builder's default
-// header rules, the consumer's translated rules, and the shared markdown/Plausible/static routing
+// header rules, the consumer's translated rules, and the shared markdown/Plausible middleware/static routing
 // canonicalBase is passed in (rather than read from the environment) so this stays a pure function
 func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteOutputs) ([]outputRoute, error) {
 	// The baked-in security/cache headers apply to every site unless a consumer overrides them
@@ -721,16 +740,14 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteO
 	// Add rewrites
 	routes = append(routes, consumer.Rewrites...)
 
-	// Add shared Plausible proxy routes before filesystem handling so requests reach the generated functions
-	routes = append(routes,
-		outputRoute{Source: "/pls/index(?:\\.[a-fA-F0-9]{1,6})?\\.js", Dest: "/pls-script"},
-		outputRoute{Source: "/pls/api(?:/(.*))?", Dest: "/pls-api"},
-	)
+	// Hand the Plausible proxy paths to the Routing Middleware before filesystem handling
+	// The middleware answers these requests itself, so the routes below never touch /pls/* responses
+	routes = append(routes, plausibleMiddlewareRoute())
 
 	// Advertise each HTML page's markdown twin with a Link: rel="alternate" response
 	// header, so clients that read headers (not just the in-page <link>) can discover it.
 	// These match extensionless pretty URLs (with or without a trailing slash) and run
-	// after the function routes so /pls/* responses are not touched.
+	// after the middleware route so /pls/* responses are not touched.
 	const mdAlternate = "; rel=\"alternate\"; type=\"text/markdown\""
 	routes = append(routes,
 		outputRoute{
@@ -790,6 +807,18 @@ func assembleRoutes(consumer consumerRoutes, canonicalBase string, outputs siteO
 	)
 
 	return routes, nil
+}
+
+// plausibleMiddlewareRoute returns the route that runs the Routing Middleware for the Plausible proxy paths
+// Running it as middleware rather than as a function means Vercel executes it in the region closest to the visitor
+// continue=true mirrors Vercel's own middleware routes; it only matters if the middleware calls next() instead of answering
+func plausibleMiddlewareRoute() outputRoute {
+	return outputRoute{
+		Source:           "^(?:" + plausibleScriptSource + "|" + plausibleAPISource + ")$",
+		MiddlewarePath:   middlewareName,
+		MiddlewareRawSrc: []string{plausibleScriptSource, plausibleAPISource},
+		Continue:         true,
+	}
 }
 
 // notFoundRoutes returns the fallback routes that serve the site's own 404 page once the filesystem has missed
@@ -897,7 +926,7 @@ func headerRoutes(headers []vercelHeader) []outputRoute {
 }
 
 // consumerRoutesFromConfig translates a project's config.json header, redirect, and rewrite
-// rules into Build Output API routes. Functions and the markdown routing are owned by this
+// rules into Build Output API routes. The middleware and the markdown routing are owned by this
 // shared builder; everything else is the project's to extend. A nil config yields no routes.
 func consumerRoutesFromConfig(cfg *projectConfig) consumerRoutes {
 	if cfg == nil {

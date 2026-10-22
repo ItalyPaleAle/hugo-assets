@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -357,19 +360,19 @@ func TestAssembleRoutesMarkdownNegotiation(t *testing.T) {
 		t.Errorf("Vary route (%d) must precede the negotiation routes (%d, %d)", varyIdx, homeIdx, pageIdx)
 	}
 
-	// Negotiation runs after the Plausible functions (so /pls/* is never rewritten to markdown) and before the filesystem serves the HTML page
+	// Negotiation runs after the Plausible middleware (so /pls/* is never rewritten to markdown) and before the filesystem serves the HTML page
 	plsIdx, _ := findRoute(routes, func(route outputRoute) bool {
-		return route.Dest == "/pls-api"
+		return route.MiddlewarePath == middlewareName
 	})
 	if plsIdx < 0 {
-		t.Fatalf("no Plausible API route")
+		t.Fatalf("no Plausible middleware route")
 	}
 	fsIdx := indexOfHandle(routes, "filesystem")
 	if fsIdx < 0 {
 		t.Fatalf("expected a filesystem handler route")
 	}
 	if homeIdx < plsIdx || pageIdx < plsIdx {
-		t.Errorf("negotiation routes (%d, %d) must come after the function routes (%d)", homeIdx, pageIdx, plsIdx)
+		t.Errorf("negotiation routes (%d, %d) must come after the middleware route (%d)", homeIdx, pageIdx, plsIdx)
 	}
 	if homeIdx > fsIdx || pageIdx > fsIdx {
 		t.Errorf("negotiation routes (%d, %d) must come before the filesystem handler (%d)", homeIdx, pageIdx, fsIdx)
@@ -578,5 +581,114 @@ func TestAssembleRoutesServesRootMarkdownFromDisk(t *testing.T) {
 		if route.Source == `^/(.+)\.md$` {
 			t.Errorf("route %d matches every .md path, including the physical /index.md and /404.md", i)
 		}
+	}
+}
+
+// TestPlausibleMiddlewareRoute confirms the Plausible proxy paths, and only those, are handed to the Routing Middleware,
+// ahead of the routes that would otherwise add markdown Link headers to them or serve them from the filesystem
+func TestPlausibleMiddlewareRoute(t *testing.T) {
+	routes, err := assembleRoutes(consumerRoutes{}, "https://example.com", siteOutputs{Markdown: true, NotFoundHTML: true, NotFoundMarkdown: true})
+	if err != nil {
+		t.Fatalf("assembleRoutes: %v", err)
+	}
+
+	mwIdx, mw := findRoute(routes, func(route outputRoute) bool {
+		return route.MiddlewarePath != ""
+	})
+	if mwIdx < 0 {
+		t.Fatalf("no middleware route")
+	}
+	if mw.MiddlewarePath != middlewareName {
+		t.Errorf("middlewarePath = %q, want %q", mw.MiddlewarePath, middlewareName)
+	}
+	if mw.Dest != "" {
+		t.Errorf("middleware route should not rewrite, got dest %q", mw.Dest)
+	}
+
+	// The proxy used to be two functions; nothing should route to them anymore
+	for i, route := range routes {
+		if route.Dest == "/pls-script" || route.Dest == "/pls-api" {
+			t.Errorf("route %d still targets the removed function %q", i, route.Dest)
+		}
+	}
+
+	// The source is a Vercel route regex, which Go's RE2 can evaluate because it uses no lookarounds
+	re := regexp.MustCompile(mw.Source)
+	for path, want := range map[string]bool{
+		"/pls/index.js":         true,
+		"/pls/index.a1b2c3.js":  true,
+		"/pls/api":              true,
+		"/pls/api/event":        true,
+		"/pls/index.a1b2c3d.js": false,
+		"/pls/index.xyz.js":     false,
+		"/pls/other":            false,
+		"/docs/pls/api/event":   false,
+		"/pls/api.json":         false,
+	} {
+		if got := re.MatchString(path); got != want {
+			t.Errorf("middleware route matches %q = %t, want %t", path, got, want)
+		}
+	}
+
+	// It must run before the Link header routes (which would otherwise match /pls/api/event) and before the filesystem
+	linkIdx, _ := findRoute(routes, func(route outputRoute) bool {
+		return strings.Contains(route.Headers["Link"], `rel="alternate"`)
+	})
+	if linkIdx < 0 {
+		t.Fatalf("no markdown alternate Link route")
+	}
+	if mwIdx > linkIdx {
+		t.Errorf("middleware route (%d) must come before the Link header routes (%d)", mwIdx, linkIdx)
+	}
+	fsIdx := indexOfHandle(routes, "filesystem")
+	if fsIdx < 0 || mwIdx > fsIdx {
+		t.Errorf("middleware route (%d) must come before the filesystem handler (%d)", mwIdx, fsIdx)
+	}
+}
+
+// TestWriteMiddleware confirms the embedded middleware is written as a Node.js function configured the way Vercel's
+// own builders configure Routing Middleware, and without regions so Vercel deploys it globally
+func TestWriteMiddleware(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("VERCEL_DOCS_NODE_RUNTIME", "")
+
+	err := writeMiddleware()
+	if err != nil {
+		t.Fatalf("writeMiddleware: %v", err)
+	}
+
+	funcDir := filepath.Join(outputDir, "functions", middlewareName+".func")
+	info, err := os.Stat(filepath.Join(funcDir, "index.js"))
+	if err != nil {
+		t.Fatalf("middleware handler not written: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Errorf("middleware handler is empty")
+	}
+
+	data, err := os.ReadFile(filepath.Join(funcDir, ".vc-config.json"))
+	if err != nil {
+		t.Fatalf("read .vc-config.json: %v", err)
+	}
+	var config map[string]any
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		t.Fatalf("parse .vc-config.json: %v", err)
+	}
+
+	want := map[string]any{
+		"runtime":          defaultVercelRuntime,
+		"handler":          "index.js",
+		"launcherType":     "Nodejs",
+		"shouldAddHelpers": false,
+		"useWebApi":        true,
+	}
+	for key, value := range want {
+		if config[key] != value {
+			t.Errorf(".vc-config.json %s = %v, want %v", key, config[key], value)
+		}
+	}
+	if _, ok := config["regions"]; ok {
+		t.Errorf(".vc-config.json should not pin regions, got %v", config["regions"])
 	}
 }

@@ -2,59 +2,57 @@ import { getVercelOidcToken } from '@vercel/functions/oidc'
 
 // Handle proxy for Plausible if enabled (if the PLAUSIBLE_API_EVENT env var contains the URL of the Plausible server, with https prefix)
 // Proxy (no cache) the message sending the request (from /pls/api/event to ${PLAUSIBLE_API_EVENT}, which should end with /api/event)
-export default {
-  async fetch(request: Request) {
-    if (!process.env.PLAUSIBLE_API_EVENT) {
-      return Response.json({ error: 'PLAUSIBLE_API_EVENT analytics not configured' }, { status: 500 })
+export async function proxyEvent(request: Request): Promise<Response> {
+  if (!process.env.PLAUSIBLE_API_EVENT) {
+    return Response.json({ error: 'PLAUSIBLE_API_EVENT analytics not configured' }, { status: 500 })
+  }
+
+  const newReq = new Request(process.env.PLAUSIBLE_API_EVENT, new Request(request, {}))
+
+  // Set the X-Forwarded-For header
+  // First, check if the request had an X-Forwarded-For already
+  if (!newReq.headers.get('x-forwarded-for')) {
+    // Fallback to X-Real-IP
+    const val = newReq.headers.get('x-real-ip')
+    if (val) {
+      newReq.headers.set('x-forwarded-for', val)
     }
+  }
 
-    const newReq = new Request(process.env.PLAUSIBLE_API_EVENT, new Request(request, {}))
+  // Set the Authorization header with the Vercel OIDC token
+  const token = await getVercelOidcToken({
+    audience: process.env.PLAUSIBLE_OIDC_TOKEN_AUDIENCE ?? undefined,
+  })
+  if (token) {
+    // Add the Vercel OIDC token to the request
+    newReq.headers.set('authorization', 'Bearer ' + token)
+  }
 
-    // Set the X-Forwarded-For header
-    // First, check if the request had an X-Forwarded-For already
-    if (!newReq.headers.get('x-forwarded-for')) {
-      // Fallback to X-Real-IP
-      const val = newReq.headers.get('x-real-ip')
-      if (val) {
-        newReq.headers.set('x-forwarded-for', val)
-      }
+  // Need to remove the Host and Cookie headers, or the request will fail
+  // Should also remove all Vercel headers
+  newReq.headers.delete('Host')
+  newReq.headers.delete('Cookie')
+  for (const key of newReq.headers.keys()) {
+    if (key.startsWith('x-vercel-')) {
+      newReq.headers.delete(key)
     }
+  }
 
-    // Set the Authorization header with the Vercel OIDC token
-    const token = await getVercelOidcToken({
-      audience: process.env.PLAUSIBLE_OIDC_TOKEN_AUDIENCE ?? undefined,
-    })
-    if (token) {
-      // Add the Vercel OIDC token to the request
-      newReq.headers.set('authorization', 'Bearer ' + token)
+  // Make the request
+  const upstreamResponse = await fetch(newReq)
+
+  // Strip Cloudflare-specific response headers
+  const responseHeaders = new Headers(upstreamResponse.headers)
+  for (const key of responseHeaders.keys()) {
+    if (key.toLowerCase().startsWith('cf-')) {
+      responseHeaders.delete(key)
     }
+  }
 
-    // Need to remove the Host and Cookie headers, or the request will fail
-    // Should also remove all Vercel headers
-    newReq.headers.delete('Host')
-    newReq.headers.delete('Cookie')
-    for (const key of newReq.headers.keys()) {
-      if (key.startsWith('x-vercel-')) {
-        newReq.headers.delete(key)
-      }
-    }
-
-    // Make the request
-    const upstreamResponse = await fetch(newReq)
-
-    // Strip Cloudflare-specific response headers
-    const responseHeaders = new Headers(upstreamResponse.headers)
-    for (const key of responseHeaders.keys()) {
-      if (key.toLowerCase().startsWith('cf-')) {
-        responseHeaders.delete(key)
-      }
-    }
-
-    // Send the response
-    return new Response(upstreamResponse.body, {
-      status: upstreamResponse.status,
-      statusText: upstreamResponse.statusText,
-      headers: responseHeaders,
-    })
-  },
+  // Send the response
+  return new Response(upstreamResponse.body, {
+    status: upstreamResponse.status,
+    statusText: upstreamResponse.statusText,
+    headers: responseHeaders,
+  })
 }
