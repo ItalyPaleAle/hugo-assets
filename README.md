@@ -96,6 +96,18 @@ Because Vercel reads `vercel.json` *before* the build runs, the generated file m
 **committed** (unlike `hugo.toml`, which can be git‑ignored). Do not edit it by hand — put
 custom routing in `config.json` instead.
 
+### Skipping builds when the docs didn't change
+
+The docs usually share a repo with code that doesn't affect the site. To skip those builds, set each Vercel project's **Ignored Build Step** (Settings → Build and Deployment, "Custom") to:
+
+```sh
+[ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && [ "$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- . ':(top)go.work' && exit 0 || exit 1
+```
+
+Vercel runs it from the project's Root Directory (the docs folder) and skips the build when it exits with `0`. It skips only when nothing in the docs folder or in the repo's root `go.work` changed since the branch's last successful deployment (`VERCEL_GIT_PREVIOUS_SHA`); in a repo without a `go.work`, that path simply never matches. Whenever it can't tell, it builds: on a branch's first deployment, on a redeploy of the same commit, and when the previous commit isn't in Vercel's shallow clone.
+
+The command lives in the project settings rather than in this builder because Vercel runs it before the build command, when neither Go nor the builder is available yet.
+
 ## Markdown content negotiation (`Accept: text/markdown`)
 
 The clean `.md` URL is the discoverable address, but an agent shouldn't have to rewrite URLs to get markdown. Every page URL also answers with its markdown twin when the request asks for it, following the [acceptmarkdown.com](https://acceptmarkdown.com) convention:
